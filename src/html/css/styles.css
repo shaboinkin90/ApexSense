@@ -1,0 +1,415 @@
+:root {
+  --theme-primary-color: #5d4eb4;
+  --theme-primary-color-darker: rgba(93, 78, 180, 0.6);
+  --theme-secondary-color: rgba(255, 113, 0, 1);
+  --theme-secondary-color-09: rgba(255, 113, 0, 0.9);
+  --theme-secondary-color-08: rgba(255, 113, 0, 0.8);
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background: linear-gradient(to bottom, var(--theme-primary-color), var(--theme-primary-color-darker));
+  height: 75px;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+/* Header specific styles */
+.header-row {
+  height: 75px;
+}
+
+.add-remove-trace-controls {
+  align-items: center;
+  background-color: white;
+  border: 1px solid #000000;
+  border-radius: var(--bs-border-radius);
+  display: flex;
+  height: 38px;
+  justify-content: center;
+  padding: 5px;
+}
+
+.control-button {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  margin: 0 5px;
+  padding: 5px;
+}
+
+.control-button svg {
+  height: 24px;
+  width: 24px;
+}
+
+.control-button:hover svg {
+  fill: #666;
+}
+
+/* Main Content specific layout */
+.content {
+  bottom: 0;
+  height: calc(100% - 75px);
+  left: 0;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: 75px;
+}
+
+/* Status messages toast - bottom right corner */
+.toast-layout {
+  bottom: 0px;
+  margin: 20px;
+  position: absolute;
+  right: 0px;
+  z-index: 1100;
+}
+
+.landing-view-layout {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  position: relative;
+  text-align: center;
+}
+
+/* Saving trace layout - overlaid over the parent view  */
+.save-card {
+  border: 3px solid black;
+  background: linear-gradient(to bottom, var(--theme-primary-color), var(--theme-primary-color-darker));
+  left: 50%;
+  position: absolute !important;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 30rem;
+  z-index: 1001;
+}
+
+.card-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.card-button {
+  position: relative;
+  width: 30%;
+}
+
+/* Loading trace layout - overlaid over the parent view */
+.load-trace-view {
+  background-color: #212529;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  width: 100%;
+  z-index: 1001;
+}
+
+.load-header-row {
+  display: flex;
+  height: auto;
+  justify-content: space-between;
+}
+
+.load-header-text {
+  padding: 1%;
+  position: relative;
+}
+
+.search-container {
+  padding-left: 20px;
+  padding-right: 20px;
+  width: 100%;
+}
+
+.search-view {
+  box-sizing: border-box;
+  padding: 8px 16px;
+  width: 100%;
+}
+
+.search-divider-layout {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.load-view {
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.list-with-dividers {
+  padding-inline-start: 0px;
+}
+
+.list-with-dividers li {
+  border-bottom: 1px solid #d3d3d384;
+  list-style-type: none;
+  padding: 8px 8px;
+}
+
+.list-with-dividers li:last-child {
+  border-bottom: none;
+}
+
+.trace-list-item {
+  align-items: center;
+  border-bottom: 1px solid #d3d3d384;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+  transition: background-color 0.3s ease;
+}
+
+.trace-item-title {
+  font-size: x-large;
+  color: white;
+}
+
+.trace-item-video {
+  font-size: small;
+  font-weight: lighter;
+  color: white;
+}
+
+.trace-item-video-missing {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.trace-item-missing-text {
+  font-style: italic;
+  color: #f5ea69;
+}
+
+.trace-list-item:hover {
+  background-color: #f5f5f516;
+}
+
+/* Rows */
+.rows-container {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  flex-shrink: 1;
+  height: auto;
+  overflow: auto;
+  position: relative;
+  width: 100%;
+}
+
+.row-item {
+  border-bottom: 1px solid black;
+  border-top: 1px solid black;
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+  overflow: hidden;
+  width: 100%;
+}
+
+
+/* Left column specific */
+.left-column {
+  align-items: center;
+  border-right: 1px solid black;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  justify-content: space-between;
+  position: relative;
+  width: 40%;
+}
+
+.buttons-row {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  flex-shrink: 0;
+  padding-top: 1vh;
+}
+
+.vertical-divider {
+  background-color: #A9A9A9;
+  height: 80%;
+  margin-left: 10px;
+  margin-right: 14px;
+  width: 1px;
+}
+
+.video-controls {
+  align-items: center;
+  background-color: var(--theme-secondary-color);
+  border: 1px solid #000000;
+  border-radius: var(--bs-border-radius);
+  display: flex;
+  justify-content: center;
+  height: 65%;
+  padding: 5px;
+}
+
+.btn.btn-orange {
+  background: var(--theme-secondary-color);
+  border-color: var(--theme-secondary-color);
+}
+
+.btn.btn-orange:hover {
+  background-color: var(--theme-secondary-color-09);
+  border-color: var(--theme-secondary-color-09);
+}
+
+.btn.btn-orange:active {
+  /* FIXME: how to set color without needing !important and why do the others not need it */
+  background-color: var(--theme-secondary-color-08) !important;
+  border-color: var(--theme-secondary-color-08) !important;
+}
+
+.btn.btn-orange:focus {
+  background-color: var(--theme-secondary-color);
+  border-color: var(--theme-secondary-color);
+}
+
+.drop-zone-container {
+  display: flex;
+  height: 100%;
+  padding-bottom: 1vh;
+  padding-left: 1vh;
+  padding-right: 1vh;
+  padding-top: 1vh;
+  width: 100%;
+}
+
+.drop-zone {
+  align-items: center;
+  align-self: center;
+  border: 3px dashed gray;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-size: 1vw;
+  height: 100%;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+}
+
+.drop-zone button {
+  cursor: pointer;
+  font-size: 0.8vw;
+  height: 5vh;
+  margin: 10px;
+  overflow: hidden;
+  padding: 0.5vw 1vw;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 35%;
+}
+
+.media-container {
+  display: flex;
+  height: auto;
+  position: relative;
+  width: auto;
+}
+
+.video-container {
+  display: flex;
+  flex-direction: row;
+  height: 40vh;
+  justify-content: center;
+  width: 100%;
+  object-fit: contain;
+  padding-top: 1vh;
+}
+
+.video-container video {
+  height: auto;
+  width: 100%;
+  /*object-fit: contain;*/
+}
+
+/* Right column specific */
+.right-column {
+  border-left: 1px solid black;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  position: relative;
+  width: 60%;
+}
+
+.loading-spinner {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* FIXME: check fields*/
+.progress-spinner-style {
+  display: block;
+  margin: auto;
+  margin-top: 10px;
+}
+
+.fade-overlay {
+  background: rgba(0, 0, 0, 0.5);
+  height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  z-index: 999;
+}
+
+.plotly {
+  height: 100%;
+  position: relative;
+  width: 100%;
+  z-index: 500;
+}
+
+
+.js-plotly-plot .plotly .modebar {
+  /* Moves the plotly modebar buttons to the left */
+  left: 0 !important;
+}
+
+.btn-group.camera-btn-container-layout {
+  bottom: 0px;
+  color: black;
+  display: flex;
+  flex-direction: column;
+  font-size: small;
+  right: 0;
+  position: absolute;
+  z-index: 501;
+}
+
+.btn.btn-light.camera-btn-layout {
+  font-size: smaller;
+  height: 28px;
+  width: 58px;
+}

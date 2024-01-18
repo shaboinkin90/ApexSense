@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<!-- TODO: support OS themes -->
+<html lang="en" data-bs-theme="dark">
+<link rel="stylesheet" href="css/styles.css">
+<!-- TODO: aria -->
+
+<head>
+  <meta charset="UTF-8">
+  <title>ApexSense G-Force Visualization</title>
+  <link href="../../assets/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!--<script src="../../assets/js/color-modes.js"></script>-->
+  <script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="../../node_modules/plotly.js/dist/plotly.min.js"></script>
+  <script>window.Plotly = Plotly;</script>
+</head>
+
+<body>
+  <svg xmlns="http://www.w3.org/2000/svg" class="d-none">
+    <!-- SVGs from https://www.svgrepo.com/ -->
+    <symbol id="new" viewBox="60 100 400 342">
+      <g stroke-width="0" />
+      <g stroke-linecap="round" stroke-linejoin="round" />
+      <g>
+        <title>new-indicator</title>
+        <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+          <g id="scheduler" fill="#FFFFFF" transform="translate(85.333333, 85.333333)">
+            <path
+              d="M170.666667,1.42108547e-14 C264.923264,-3.10380131e-15 341.333333,76.4100694 341.333333,170.666667 C341.333333,264.923264 264.923264,341.333333 170.666667,341.333333 C76.4100694,341.333333 2.57539587e-14,264.923264 1.42108547e-14,170.666667 C2.6677507e-15,76.4100694 76.4100694,3.15255107e-14 170.666667,1.42108547e-14 Z M170.666667,42.6666667 C99.9742187,42.6666667 42.6666667,99.9742187 42.6666667,170.666667 C42.6666667,241.359115 99.9742187,298.666667 170.666667,298.666667 C241.359115,298.666667 298.666667,241.359115 298.666667,170.666667 C298.666667,99.9742187 241.359115,42.6666667 170.666667,42.6666667 Z M192,85.3333333 L191.999333,149.333333 L256,149.333333 L256,192 L191.999333,191.999333 L192,256 L149.333333,256 L149.333333,191.999333 L85.3333333,192 L85.3333333,149.333333 L149.333333,149.333333 L149.333333,85.3333333 L192,85.3333333 Z"
+              id="Combined-Shape"> </path>
+          </g>
+        </g>
+      </g>
+    </symbol>
+    <symbol id="save" viewBox="0 180 2000 2000">
+      <g stroke-width="0" />
+      <g stroke-linecap="round" stroke-linejoin="round" />
+      <g fill="#FFFFFF">
+        <path
+          d="M790.706 338.824v112.94H395.412c-31.06 0-56.47 25.3-56.47 56.471v744.509c17.73-6.325 36.592-10.391 56.47-10.391h1129.412c19.877 0 38.738 4.066 56.47 10.39V508.236c0-31.171-25.412-56.47-56.47-56.47h-395.295V338.824h395.295c93.402 0 169.411 76.009 169.411 169.411v1242.353c0 93.403-76.01 169.412-169.411 169.412H395.412C302.009 1920 226 1843.99 226 1750.588V508.235c0-93.402 76.01-169.411 169.412-169.411h395.294Zm734.118 1016.47H395.412c-31.06 0-56.47 25.299-56.47 56.47v338.824c0 31.172 25.41 56.47 56.47 56.47h1129.412c31.058 0 56.47-25.298 56.47-56.47v-338.823c0-31.172-25.412-56.47-56.47-56.47ZM1016.622-.023v880.151l246.212-246.325 79.85 79.85-382.532 382.644-382.645-382.644 79.85-79.85L903.68 880.128V-.022h112.941ZM564.824 1468.235c-62.344 0-112.942 50.71-112.942 112.941s50.598 112.942 112.942 112.942c62.343 0 112.94-50.71 112.94-112.942 0-62.23-50.597-112.94-112.94-112.94Z"
+          fill-rule="evenodd" />
+      </g>
+    </symbol>
+    <symbol id="load" viewBox="0 0 512 512">
+      <g stroke-width="0" />
+      <g stroke-linecap="round" stroke-linejoin="round" />
+      <g fill="#FFFFFF">
+        <g fill-rule="evenodd" transform="translate(42.667 42.667)">
+          <path
+            d="M178.0832,42.6666667 L221.594,77.0716667 L191.217,107.448667 L163.24992,85.3333333 L42.6666667,85.3333333 L42.6666667,296.106667 L82.0209067,170.666667 L341.333333,170.666667 L341.333,170.665667 L384,170.665667 L437.333333,170.666667 L372.583253,384 L-2.13162821e-14,384 L-2.13162821e-14,42.6666667 L178.0832,42.6666667 Z M379.79136,213.333333 L113.354027,213.333333 L73.1874133,341.333333 L340.95808,341.333333 L379.79136,213.333333 Z" />
+          <path fill-rule="nonzero"
+            d="M384,7.10542736e-15 L384,149.333333 L341.333333,149.333333 L341.332777,72.836 L264.836777,149.332777 L204.496777,149.333333 L311.162777,42.666 L234.666667,42.6666667 L234.666667,7.10542736e-15 L384,7.10542736e-15 Z" />
+        </g>
+      </g>
+    </symbol>
+    <symbol id="info" width="16" height="16" viewBox="0 0 22 22" fill="none">
+      <path
+        d="M12 21.5C17.1086 21.5 21.25 17.3586 21.25 12.25C21.25 7.14137 17.1086 3 12 3C6.89137 3 2.75 7.14137 2.75 12.25C2.75 17.3586 6.89137 21.5 12 21.5Z"
+        stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path
+        d="M12.9309 8.15005C12.9256 8.39231 12.825 8.62272 12.6509 8.79123C12.4767 8.95974 12.2431 9.05271 12.0008 9.05002C11.8242 9.04413 11.6533 8.98641 11.5093 8.884C11.3652 8.7816 11.2546 8.63903 11.1911 8.47415C11.1275 8.30927 11.1139 8.12932 11.152 7.95675C11.19 7.78419 11.278 7.6267 11.405 7.50381C11.532 7.38093 11.6923 7.29814 11.866 7.26578C12.0397 7.23341 12.2192 7.25289 12.3819 7.32181C12.5446 7.39072 12.6834 7.506 12.781 7.65329C12.8787 7.80057 12.9308 7.97335 12.9309 8.15005ZM11.2909 16.5301V11.1501C11.2882 11.0556 11.3046 10.9615 11.3392 10.8736C11.3738 10.7857 11.4258 10.7057 11.4922 10.6385C11.5585 10.5712 11.6378 10.518 11.7252 10.4822C11.8126 10.4464 11.9064 10.4286 12.0008 10.43C12.094 10.4299 12.1863 10.4487 12.272 10.4853C12.3577 10.5218 12.4352 10.5753 12.4997 10.6426C12.5642 10.7099 12.6143 10.7895 12.6472 10.8767C12.6801 10.9639 12.6949 11.0569 12.6908 11.1501V16.5301C12.6908 16.622 12.6727 16.713 12.6376 16.7979C12.6024 16.8828 12.5508 16.96 12.4858 17.025C12.4208 17.09 12.3437 17.1415 12.2588 17.1767C12.1738 17.2119 12.0828 17.23 11.9909 17.23C11.899 17.23 11.8079 17.2119 11.723 17.1767C11.6381 17.1415 11.5609 17.09 11.4959 17.025C11.4309 16.96 11.3793 16.8828 11.3442 16.7979C11.309 16.713 11.2909 16.622 11.2909 16.5301Z"
+        fill="#ffffff"></path>
+    </symbol>
+    <symbol id="back" viewBox="0 0 1024 1024" fill="#ffffff">
+      <path
+        d="M669.6 849.6c8.8 8 22.4 7.2 30.4-1.6s7.2-22.4-1.6-30.4l-309.6-280c-8-7.2-8-17.6 0-24.8l309.6-270.4c8.8-8 9.6-21.6 2.4-30.4-8-8.8-21.6-9.6-30.4-2.4L360.8 480.8c-27.2 24-28 64-0.8 88.8l309.6 280z"
+        fill="" />
+    </symbol>
+    <symbol id="audio-on" viewBox="0 0 24 24">
+      <g stroke-width="0" />
+      <g stroke-linecap="round" stroke-linejoin="round" />
+      <g>
+        <path
+          d="M13 3.7446C13 3.27314 12.8728 2.50021 12.1657 2.14424C11.4151 1.76635 10.7163 2.19354 10.3623 2.51158L4.94661 7.43717H3C1.89543 7.43717 1 8.3326 1 9.43717L1.00001 14.6248C1.00001 15.7293 1.89544 16.6248 3.00001 16.6248H4.95001L10.3623 21.4891C10.7175 21.8081 11.416 22.2331 12.1656 21.8554C12.8717 21.4998 13 20.7286 13 20.2561V3.7446Z" />
+        <path
+          d="M17.336 3.79605L17.0952 3.72886C16.5633 3.58042 16.0117 3.89132 15.8632 4.42329L15.7289 4.90489C15.5804 5.43685 15.8913 5.98843 16.4233 6.13687L16.6641 6.20406C18.9551 6.84336 20.7501 9.14615 20.7501 12.0001C20.7501 14.854 18.9551 17.1568 16.6641 17.7961L16.4233 17.8632C15.8913 18.0117 15.5804 18.5633 15.7289 19.0952L15.8632 19.5768C16.0117 20.1088 16.5633 20.4197 17.0952 20.2713L17.336 20.2041C20.7957 19.2387 23.2501 15.8818 23.2501 12.0001C23.2501 8.11832 20.7957 4.76146 17.336 3.79605Z" />
+        <path
+          d="M16.3581 7.80239L16.1185 7.73078C15.5894 7.57258 15.0322 7.87329 14.874 8.40243L14.7308 8.88148C14.5726 9.41062 14.8733 9.96782 15.4024 10.126L15.642 10.1976C16.1752 10.3571 16.75 11.012 16.75 12C16.75 12.9881 16.1752 13.643 15.642 13.8024L15.4024 13.874C14.8733 14.0322 14.5726 14.5894 14.7308 15.1185L14.874 15.5976C15.0322 16.1267 15.5894 16.4274 16.1185 16.2692L16.3581 16.1976C18.1251 15.6693 19.25 13.8987 19.25 12C19.25 10.1014 18.1251 8.33068 16.3581 7.80239Z" />
+      </g>
+    </symbol>
+    <symbol id="audio-off" viewBox="0 0 24 24">
+      <g stroke-width="0" />
+      <g stroke-linecap="round" stroke-linejoin="round" />
+      <g>
+        <path
+          d="M12.1657 2.14424C12.8728 2.50021 13 3.27314 13 3.7446V20.2561C13 20.7286 12.8717 21.4998 12.1656 21.8554C11.416 22.2331 10.7175 21.8081 10.3623 21.4891L4.95001 16.6248H3.00001C1.89544 16.6248 1.00001 15.7293 1.00001 14.6248L1 9.43717C1 8.3326 1.89543 7.43717 3 7.43717H4.94661L10.3623 2.51158C10.7163 2.19354 11.4151 1.76635 12.1657 2.14424Z" />
+        <path
+          d="M21.8232 15.6767C21.4327 16.0673 20.7995 16.0673 20.409 15.6768L18.5 13.7678L16.591 15.6768C16.2005 16.0673 15.5673 16.0673 15.1768 15.6767L14.8233 15.3232C14.4327 14.9327 14.4327 14.2995 14.8233 13.909L16.7322 12L14.8232 10.091C14.4327 9.70044 14.4327 9.06727 14.8232 8.67675L15.1767 8.3232C15.5673 7.93267 16.2004 7.93267 16.591 8.32319L18.5 10.2322L20.409 8.32319C20.7996 7.93267 21.4327 7.93267 21.8233 8.3232L22.1768 8.67675C22.5673 9.06727 22.5673 9.70044 22.1768 10.091L20.2678 12L22.1767 13.909C22.5673 14.2995 22.5673 14.9327 22.1767 15.3232L21.8232 15.6767Z" />
+      </g>
+    </symbol>
+    <!-- ChatGPT generated svgs -->
+    <symbol id="play" viewBox="0 0 24 24">
+      <polygon fill="#000000" points="5,3 19,12 5,21" />
+    </symbol>
+    <symbol id="pause" viewBox="0 0 24 24">
+      <rect fill="#000000" x="6" y="4" width="4" height="16"></rect>
+      <rect fill="#000000" x="14" y="4" width="4" height="16"></rect>
+    </symbol>
+    <symbol id="stop" viewBox="0 0 24 24">
+      <rect fill="#000000" x="5" y="5" width="14" height="14"></rect>
+    </symbol>
+  </svg>
+
+  <main>
+    <header>
+      <div class="row header-row">
+        <div class="col d-flex align-items-center justify-content-center" id="header-brand">
+          <h1>ApexSense</h1>
+        </div>
+        <div class="col d-flex align-items-center justify-content-center" id="header-compare-buttons">
+          <div class="add-remove-trace-controls">
+            <button class="btn control-button" id="minus-button">
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <line x1="5" y1="12" x2="19" y2="12" stroke="#333" stroke-width="2" />
+              </svg>
+            </button>
+            <span id="num-traces-label" style="color: black;">1 Trace</span>
+            <button class="btn control-button" id="plus-button">
+              <svg viewBox="0 0 24 24" width="20" height="20">
+                <line x1="12" y1="5" x2="12" y2="19" stroke="#333" stroke-width="2" />
+                <line x1="5" y1="12" x2="19" y2="12" stroke="#333" stroke-width="2" />
+              </svg>
+            </button>
+          </div>
+        </div> <!-- header-compare-buttons-->
+        <div class="col d-flex align-items-center justify-content-center" id="header-sync-toggles">
+          <div class="col" id="sync-options">
+            <div class="checkbox-container" id="sync-view-option">
+              <input class="form-check-input" type="checkbox" id="sync-view-checkbox" data-bs-toggle="tooltip"
+                data-bs-delay='{"show":"500", "hide":"250"}' data-bs-placement="bottom" data-bs-title="Adjusting the view of one graph adjusts the view of all other graphs in the same way. Useful for
+                                                                    comparing.">
+              <label class="form-check-label" for="sync-view-checkbox">Sync graph views</label>
+            </div>
+            <div class="checkbox-container" id="sync-video-option">
+              <input class="form-check-input" type="checkbox" id="sync-video-checkbox" data-bs-toggle="tooltip"
+                data-bs-delay='{"show":"500", "hide":"250"}' data-bs-placement="bottom"
+                data-bs-title="Playing one video causes all others to play.">
+              <label class="form-check-label" for="sync-video-checkbox">Sync video playback</label>
+            </div>
+          </div>
+        </div> <!-- header-sync-toggles-->
+      </div>
+    </header>
+
+    <!-- saving - positioned over content when triggered -->
+    <div id="save-card-element" class="card save-card" hidden>
+      <div class="card-body card-body-style">
+        <div class="row mt-2">
+          <div class="col-3">
+            <label for="form-trace-title" class="col-form-label">Save as:</label>
+          </div>
+          <div class="col-9">
+            <input type="text" id="form-trace-title" class="form-control"
+              placeholder="Track day at Racetrack 2/29/2020">
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-3"></div>
+          <div class="col-9 d-flex align-items-center">
+            <label class="form-check-label" for="store-video-checkbox">
+              <input type="checkbox" id="store-video-checkbox">
+              <span>Store a copy of the video</span>
+            </label>
+            <button type="button" class="btn" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true"
+              data-bs-title="We will remember where your video file is stored. If you move the video, we won't be able to find it later.
+              <br>By selecting this option, we'll make a copy of the video. This way, even if you move the original video, you can still 
+              load the trace and view the video it is associated with.">
+              <svg class="icon" width="16" height="16" viewBox="0 0 22 22">
+                <use href="#info"></use>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-buttons">
+          <button type="button" id="commit-save-button" class="btn btn-orange card-button">Save Trace</button>
+          <button type="button" id="cancel-save-button" class="btn btn-secondary card-button">Cancel</button>
+        </div>
+      </div>
+    </div> <!-- save-card-element -->
+
+    <div class="content">
+      <div id="status-toast-container" class="toast-layout">
+      </div> <!-- status-toast-container -->
+      <div id="landing-view" class="landing-view-layout">
+        <div class="container" style="height: 100%;">
+          <div class="row" style="height: 90%;">
+            <div class="align-self-center">
+              <h1>G-force Visualization</h1>
+              <p class="lead">Upload video produced by your Garmin Catalyst to visualize G-forces.</p>
+              <button id="get-started-btn" class="btn btn-success">Get Started</button>
+            </div>
+          </div>
+          <div class="row align-items-center justify-content-center">
+            <span class="d-flex" style="width: 60%; font-size: x-small;">Disclaimer: This software is not affiliated,
+              associated, authorized, endorsed by, or in any way, officially connected with Garmin, or any of its
+              subsidiaries or its affiliates. The official
+              Garmin website can be found at https://www.garmin.com/.
+              The name Garmin, Garmin Catalyst, as well as
+              related names, marks, emblems, and images are registered trademarks of their respective owners."</span>
+          </div>
+        </div>
+      </div> <!-- landing-view -->
+      <div id="main-content" class="rows-container" hidden>
+      </div> <!-- main-content -->
+      <div id="load-trace-view" class="load-trace-view" hidden>
+        <div class="load-header-row">
+          <button id="back-btn-load-view" class="btn">
+            <svg width="32px" height="32px">
+              <use xlink:href="#back"></use>
+            </svg>
+          </button>
+          <div class="load-header-text">
+            <h2>Load a Trace</h2>
+          </div>
+          <button id="import-btn-load-view" class="btn btn-light mt-3 mb-3 me-4">
+            Import
+          </button>
+        </div>
+        <div class="search-container">
+          <input type="text" class="search-view" id="search-bar" placeholder="Search...">
+        </div>
+        <hr class="search-divider-layout">
+        <div class="load-view">
+          <ul id="load-trace-list" class="list-with-dividers">
+            <!-- TODO: add way to rename saved traces, check same name before saving -->
+          </ul>
+        </div>
+      </div> <!-- load-trace-view -->
+    </div> <!-- content -->
+    <script src="../renderer/graphing.js"></script>
+    <script src="../renderer/uibuilder.js"></script>
+    <script src="../renderer/renderer.js"></script>
+  </main>
+</body>
+
+</html>

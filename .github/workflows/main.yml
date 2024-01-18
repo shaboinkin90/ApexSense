@@ -1,0 +1,153 @@
+name: Build and Release
+
+on: 
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macOS-ARM64:
+    runs-on: [self-hosted, macOS, ARM64]
+
+    steps:    
+      - name: Dump system configuration
+        run: |
+          echo "Displaying system information:"
+          uname -a
+          sw_vers
+
+          echo "Brew config:"
+          brew config
+
+          echo "npm config:"
+          npm version
+
+          echo "Python3 config:"
+          python3 -VV
+          pyinstaller --version
+
+      - name: Check out Git repositoy
+        uses: actions/checkout@v4.1.1
+        with:
+          clean: true
+
+      - name: Install Node Modules
+        run: npm install
+
+      - name: macOS Pyinstaller
+        env:
+          MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
+        run: pyinstaller --codesign-identity "$MAC_SIGNING_IDENTITY" --onefile src/processing/garmin_video_processing.py --distpath=./packaging/python-binary/dist/darwin/arm64 --workpath=./packaging/python-binary/build/darwin/arm64/
+
+      - name: macOS Pyinstaller Make Executable
+        run: chmod +x ./packaging/python-binary/dist/darwin/arm64/garmin_video_processing
+
+      - name: Make Electron Package
+        env: 
+          MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
+        run: npm run make
+
+      - name: Upload macOS dmg Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexSense-macOS-ARM64.dmg
+          path: out/make/ApexSense.dmg
+          compression-level: 0
+
+  build-windows-x64:
+    runs-on: [self-hosted, Windows, X64]
+    steps:
+    
+      - name: Dump system configuration
+        run: |
+          echo "Displaying system information:"
+          systeminfo | Select-String "OS Name", 
+          "OS Version", 
+          "OS Manufacturer", 
+          "OS Configuration", 
+          "OS Build Type", 
+          "Product ID", 
+          "System Manufacturer", 
+          "System Model", 
+          "System Type",
+          "Processor(s)", 
+          "BIOS Version"
+
+          echo "npm config:"
+          npm version
+
+          echo "Python3 config:"
+          python -VV
+          pyinstaller --version
+
+      - name: Check out Git repositoy
+        uses: actions/checkout@v4.1.1
+        with:
+          clean: true
+
+      - name: Install Node Modules
+        run: npm install
+
+      - name: Windows Pyinstaller
+        run: pyinstaller --onefile src\processing\garmin_video_processing.py --distpath=.\packaging\python-binary\dist\win32\x64 --workpath=.\packaging\python-binary\build\win32\x64
+        
+      - name: Windows Codesign the Python Binary
+        env:
+          CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+          CERT_PATH: ${{ secrets.WIN_CERT_PATH }}
+        run: signtool sign /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a .\packaging\python-binary\dist\win32\x64\garmin_video_processing.exe
+        shell: pwsh
+
+      - name: Make Electron Package
+        run: npm run make
+
+      - name: Upload Windows exe Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexSense-Win-x64.exe
+          path: out/make/squirrel.windows/x64/ApexSenseSetup.exe
+          compression-level: 0
+
+        
+  create-release:
+    needs: ['build-macOS-ARM64', 'build-windows-x64']
+    runs-on: [self-hosted, macOS, ARM64]
+
+    steps:
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ApexSense-macOS-ARM64.dmg
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ApexSense-Win-x64.exe
+
+      - name: Create Release
+        id: create-release-step
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          name: "ApexSense ${{ github.ref_name }}"
+          tag: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-step.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/ApexSense.dmg
+          asset_name: ApexSense-macOS-ARM64.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload Windows Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-step.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/ApexSenseSetup.exe
+          asset_name: ApexSense-Windows-x64.exe
+          asset_content_type: application/octet-stream

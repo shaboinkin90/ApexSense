@@ -1,0 +1,35 @@
+{
+  "name": "apexsense",
+  "productName": "ApexSense",
+  "version": "1.0.0",
+  "description": "Visualize G-forces recorded by Garmin Catalyst",
+  "main": "src/electron/main.js",
+  "scripts": {
+    "start": "electron-forge start -- --unhandled-rejections=strict --trace-warnings",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "author": "Daniel Kulas",
+  "license": "ISC",
+  "dependencies": {
+    "@electron/asar": "^3.2.8",
+    "adm-zip": "^0.5.10",
+    "asar": "^3.2.0",
+    "bootstrap": "^5.3.2",
+    "electron-log": "^5.0.0",
+    "electron-squirrel-startup": "^1.0.0",
+    "plotly.js": "^2.26.2",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.2.0",
+    "@electron-forge/maker-deb": "^7.2.0",
+    "@electron-forge/maker-dmg": "^7.0.0",
+    "@electron-forge/maker-rpm": "^7.2.0",
+    "@electron-forge/maker-squirrel": "^7.2.0",
+    "@electron-forge/maker-zip": "^7.2.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.2.0",
+    "@electron-forge/publisher-github": "^7.2.0",
+    "electron": "^27.1.3"
+  }
+}

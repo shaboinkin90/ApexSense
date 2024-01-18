@@ -1,0 +1,9 @@
+.DS_Store
+.vscode/
+node_modules/
+**/package-lock.json
+*.spec
+
+# generated build output
+out/
+packaging/
