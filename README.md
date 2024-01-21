@@ -19,13 +19,13 @@ High performance driving requires the driver to balance the inputs made to the c
 
 The inputs a driver makes are reflected in the G-force graphs. Understanding what the G-force graphs are showing you can help to refine your driving technique. 
 
-If a driver drove a perfect line, only the exact amount of inputs would be provided and no more. A hypothetical graph of a perfect line would show a smooth trajectory with a proportional ratio of lateral to horizontal G-forces that never results in uncontrolled tire slip. Any deviate from a perfect line will show up in the G-force data as blips, bumps, and humps along the graph.
+If a driver drove a perfect line, only the exact amount of inputs would be provided and no more. A hypothetical graph of a perfect line would show a smooth trajectory with a proportional ratio of lateral to horizontal G-forces that never results in uncontrolled tire slip. Any deviation from a perfect line will show up in the G-force data as blips, bumps, and humps along the graph.
 
 Lateral and horizontal G-force graphs are typically shown in two separated graphs, which makes it difficult to understand this balancing act.
 
 ApexSense can show the relationship of all inputs the driver makes over the course of time in a single curve through 3 dimensions. With both lateral and horizontal datapoints combined, the driver can understand their technique and work to refine it. The resulting 3 dimensional curve can visualize imprecise form while trailbraking, show excessive corrections throughout a corner, and the overall trajectory of the combined inputs throughout the corner. 
 
-With ApexSense, the driving line is reveiled to the driver not based on their physical location on track, but how the car actually moves *through* the track.
+With ApexSense, the driving line is revealed to the driver not based on their physical location on track, but how the car actually moves *through* the track.
 
 <img src="./readme_assets/readme-compare-1.jpg" width="1000">Comparing multiple video</img>
 
@@ -91,7 +91,7 @@ Binaries are produced for the systems that I have on hand to personally test on:
 If you do not have such a system, leave a [feature request](https://github.com/shaboinkin90/ApexSense/issues) with information on your system setup and I'll see about producing binaries for it. Consider building the software on your system, as detailed below, if binaries are not available for your particular setup. 
 
 #### Codesigning 
-Binaries I generate are codesigned with my Apple Developer certificate for Mac or my personally generated codesigning certificate for Windows. I did not go through the process of getting this noterized by Apple, nor did I wish to acquire a 3rd party codesigning certificate for Windows - I have no idea how many people will actually use this tool and there is a cost assoicated with doing this. I am unable to noterize through Apple as the resulting pyinstaller binary does not work with Sandboxing enabled - a requirement of noterization. 
+Binaries I generate are codesigned with my Apple Developer certificate for Mac or my personally generated codesigning certificate for Windows. I did not go through the process of getting this notarized by Apple, nor did I wish to acquire a 3rd party codesigning certificate for Windows - I have no idea how many people will actually use this tool and there is a cost assoicated with doing this. I am unable to notarize through Apple as the resulting pyinstaller binary does not work with Sandboxing enabled - a requirement of notarization. 
 
 As a result, when running the prebuilt binaries, the operating system will flag the application as being "untrusted" which will require you to manually bypass the security to allow ApexSense to run. You can find instructions online for how to bypass this.
 
@@ -101,7 +101,7 @@ If you are uneasy about running untrusted code, feel free to clone this reposito
 
 **Windows instructions**: https://support.microsoft.com/en-us/windows/add-an-exclusion-to-windows-security-811816c0-4dfd-af4a-47e4-c301afe13b26
 
-When adding an exlucsion, you'll need to specify the path of the folder to ApexSense. 
+When adding an exclucsion, you'll need to specify the path of the folder to ApexSense. 
 
 The default installation location on Windows is:
 ```
