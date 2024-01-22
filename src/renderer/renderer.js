@@ -446,10 +446,6 @@ window.electron.receive('trace-io-complete', (result) => {
       break;
     case 'delete':
       // FIXME: lazy - remove particular row, not refresh the entire list
-      const request = {
-        'type': 'readall',
-        'index': result['index'],
-      };
       window.electron.traceFileIO({
         'type': 'readall',
         'index': result['index'],

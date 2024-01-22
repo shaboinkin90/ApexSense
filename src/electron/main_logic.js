@@ -694,6 +694,7 @@ async function deleteTrace(request) {
   });
   return {
     'status': DeleteReponse.OK,
+    'index': request['index'],
   }
 }
 
