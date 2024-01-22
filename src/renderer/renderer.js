@@ -113,13 +113,14 @@ function saveAction() {
   }
 
   const rowIndex = saveCard.getAttribute('save-event-row-id');
-  const row = rowUIElementMap.get(parseInt(rowIndex), 10);
+  const uiElements = rowUIElementMap.get(parseInt(rowIndex, 10));
 
   const shouldCacheVideo = document.getElementById('store-video-checkbox').checked;
-  const videoPath = row['dataStash'].videoPath;
-  const jsonPath = row['dataStash'].traceJsonPath;
+  const videoPath = uiElements['dataStash'].videoPath;
+  const jsonPath = uiElements['dataStash'].traceJsonPath;
   const saveRequest = {
     'type': 'create',
+    'index': rowIndex,
     'title': title.value,
     'cacheVideo': shouldCacheVideo,
     'videoPath': videoPath,
@@ -145,6 +146,19 @@ function saveTraceCompletion(results) {
     view.hidden = true;
   });
 
+  const uiElements = rowUIElementMap.get(parseInt(results['index'], 10));
+  if (!uiElements) {
+    // not fatal, though it would be odd
+    console.warn(`No UI entry for ${results['index']} for updating graph title`);
+  } else {
+    const gForcePlot = uiElements['gForcePlot'];
+    if (!gForcePlot) {
+      console.error(`No gForcePlot set!\n
+      ${JSON.stringify(results)}\n
+      ${JSON.stringify(uiElements)}`);
+    }
+    gForcePlot.updateTitle(results['title']);
+  }
   if (results['status'] === 'ok') {
     showToast('Save successful', true);
   } else {
@@ -315,8 +329,8 @@ window.electron.receive('python-complete', (result) => {
         uiElements.gForcePlot.viewGraph('3d');
 
         uiElements['dataStash'].traceJsonPath = result['jsonPath'];
-        uiElements['rightColumn'].plotly.top.setAttribute('has-data', 'yes');
-        uiElements['rightColumn'].plotly.bottom.setAttribute('has-data', 'no');
+        uiElements['rightColumn'].plotly.top.setAttribute('has-data', '');
+        uiElements['rightColumn'].plotly.bottom.removeAttribute('has-data');
         const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
         const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
         const videoControls = uiElements['leftColumn'].videoControls.container;

@@ -373,7 +373,9 @@ async function createTrace(request) {
     await fs.writeFile(outputTracePath, JSON.stringify(jsonTrace));
     return {
       'status': ResponseStatus.OK,
-      'outputPath': outputTracePath
+      'outputPath': outputTracePath,
+      'title': jsonTrace['title'],
+      'index': request['index'],
     };
   } catch (error) {
     log.error(error);

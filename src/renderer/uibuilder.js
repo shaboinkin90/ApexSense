@@ -414,16 +414,16 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       rightColumn['plotly'].top.hidden = false;
       rightColumn['plotly'].bottom.hidden = true;
       rightColumn['viewButtons'].viewButtonGroup.hidden = false;
-      rightColumn['plotly'].top.setAttribute('has-data', 'yes');
-      rightColumn['plotly'].bottom.setAttribute('has-data', 'no');
+      rightColumn['plotly'].top.setAttribute('has-data', '');
+      rightColumn['plotly'].bottom.removeAttribute('has-data');
       gForcePlot.viewGraph('3d');
     });
     view2dBtn.addEventListener('click', () => {
       rightColumn['plotly'].top.hidden = false;
       rightColumn['plotly'].bottom.hidden = false;
       rightColumn['viewButtons'].viewButtonGroup.hidden = true;
-      rightColumn['plotly'].top.setAttribute('has-data', 'yes');
-      rightColumn['plotly'].bottom.setAttribute('has-data', 'yes');
+      rightColumn['plotly'].top.setAttribute('has-data', '');
+      rightColumn['plotly'].bottom.setAttribute('has-data', '');
       gForcePlot.viewGraph('2d');
     })
   }
@@ -858,11 +858,11 @@ function adjustRowItemHeights(rootDiv) {
   // Changing the height of plotly's parent div does not trigger a relayout - do this manually
   rowUIElementMap.forEach((value, _key) => {
     let graph = value['rightColumn'].plotly.top;
-    if (graph.getAttribute('has-data') === 'yes') {
+    if (graph.hasAttribute('has-data')) {
       Plotly.relayout(value['rightColumn'].plotly.top, {});
     }
     graph = value['rightColumn'].plotly.bottom;
-    if (graph.getAttribute('has-data') === 'yes') {
+    if (graph.hasAttribute('has-data')) {
       Plotly.relayout(value['rightColumn'].plotly.bottom, {});
     }
   });
