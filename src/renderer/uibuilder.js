@@ -425,7 +425,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       rightColumn['plotly'].top.setAttribute('has-data', '');
       rightColumn['plotly'].bottom.setAttribute('has-data', '');
       gForcePlot.viewGraph('2d');
-    })
+    });
   }
 
   // dropzone
@@ -970,6 +970,7 @@ function displayTraces(result) {
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const request = {
+        'index': index,
         'type': 'delete',
         'traceId': id,
       };
@@ -982,8 +983,8 @@ function displayTraces(result) {
       e.stopPropagation();
 
       const request = {
-        'type': 'read',
         'index': index,
+        'type': 'read',
         'tracePath': trace.tracePath,
         'videoPath': videoPath,
       };
