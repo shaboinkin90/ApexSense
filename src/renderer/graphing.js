@@ -43,15 +43,15 @@ class GForcePlot {
       'type': 'lateral',
     };
     this.#graph2dHorizontal = this.#createPlot(mode, this.#graphDivs.bottom, graphData, this.#videoPlayer);
-
   }
+
 
   viewGraph(view) {
     switch (view) {
       case '2d': {
         this.#graph3d.clear();
-        this.#graphDivs.top.setAttribute('has-data', 'yes');
-        this.#graphDivs.bottom.setAttribute('has-data', 'yes');
+        this.#graphDivs.top.setAttribute('has-data', '');
+        this.#graphDivs.bottom.setAttribute('has-data', '');
         this.#graph2dLateral.createPlotlyGraph(this.#title, this.#fps, this.#syncCallback);
         this.#graph2dHorizontal.createPlotlyGraph(this.#title, this.#fps, this.#syncCallback);
         return;
@@ -60,8 +60,8 @@ class GForcePlot {
         this.#graph2dLateral.clear();
         this.#graph2dHorizontal.clear();
 
-        this.#graphDivs.top.setAttribute('has-data', 'yes');
-        this.#graphDivs.bottom.setAttribute('has-data', 'no');
+        this.#graphDivs.top.setAttribute('has-data', '');
+
         this.#graph3d.createPlotlyGraph(this.#title, this.#fps, this.#syncCallback);
         return;
       }
@@ -95,6 +95,22 @@ class GForcePlot {
     }
   }
 
+  updateTitle(title) {
+    this.#title = title;
+
+    if (this.#graph3d && this.#graphDivs.top.hasAttribute('has-data')) {
+      this.#graph3d.updateTitle(title);
+    }
+
+    if (this.#graph2dLateral && this.#graphDivs.top.hasAttribute('has-data')) {
+      this.#graph2dLateral.updateTitle(title);
+    }
+
+    if (this.#graph2dHorizontal && this.#graphDivs.bottom.hasAttribute('has-data')) {
+      this.#graph2dHorizontal.updateTitle(title);
+    }
+  }
+
   clearGraphs() {
     if (this.#graph3d) {
       this.#graph3d.clear();
@@ -105,8 +121,8 @@ class GForcePlot {
     if (this.#graph2dLateral) {
       this.#graph2dLateral.clear();
     }
-    this.#graphDivs.top.setAttribute('has-data', 'no');
-    this.#graphDivs.bottom.setAttribute('has-data', 'no');
+    this.#graphDivs.top.removeAttribute('has-data');
+    this.#graphDivs.bottom.removeAttribute('has-data');
   }
 
   #processTraceData() {
@@ -178,6 +194,10 @@ class PlotStrategy {
 
   changeView(cameraOption) {
     throw new ("Extend PlotStrategy and implement changeView");
+  }
+
+  updateTitle(title) {
+    throw new ("Extend PlotStrategy and implement updateTitle")
   }
 
   clear() {
@@ -253,6 +273,12 @@ class Plot2DStrategy extends PlotStrategy {
 
   changeView(cameraOption) {
     // no-op
+  }
+
+  updateTitle(title) {
+    Plotly.relayout(this.plotlyDiv, {
+      title: title,
+    });
   }
 
   clear() {
@@ -421,6 +447,12 @@ class Plot3DStrategy extends PlotStrategy {
   changeView(position) {
     const cameraPosition = this.#getCameraPosition(position);
     Plotly.relayout(this.plotlyDiv, cameraPosition);
+  }
+
+  updateTitle(title) {
+    Plotly.relayout(this.plotlyDiv, {
+      title: title,
+    });
   }
 
   clear() {
