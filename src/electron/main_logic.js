@@ -406,36 +406,61 @@ function selectExportLocationDialogPrompt(callback) {
 }
 
 async function exportTrace(request) {
+  log.debug(`Export trace request: ${JSON.stringify(request)}`);
   const ExportReponse = Object.freeze({
     ERROR: 'error',
     MISSING_VIDEO: 'missing-video',
     OK: 'ok',
-    CANCELED: 'canceled',
   });
 
-  log.debug(`Export trace request: ${JSON.stringify(request)}`);
-
+  const traces = request['traces'];
   const destDirPath = request['outputDest'];
-  const tracePath = path.join(ROOT_PATH, 'traces', request['traceId']);
 
-  const result = await getTitleAndVideoPathFromTrace(tracePath);
+  const ignoreTracesList = [];
 
-  const zipFileName = sanitizeFilename(result['title']);
-  // custom extension purely so it's identifiable as being the thing to import later, it's just a zip file
-  const destFullPath = path.join(destDirPath, `${zipFileName}.apx`);
-
+  let destFullPath = path.join(destDirPath, 'ApexSense Exported Traces.apx');
   const zip = new AdmZip();
-  zip.addLocalFolder(tracePath);
 
-  // The option to cache a video implies the video is already in the folder that will be zipped.
-  // Only add the video file in if it doesn't already exist in this trace folder
-  const doesVideoExistInTraceFolder = result['videoPath'].includes(tracePath);
-  if (!doesVideoExistInTraceFolder) {
-    if (await checkFileExists(result['videoPath'])) {
-      zip.addLocalFile(result['videoPath'], '', 'video.mp4');
-    } else {
-      log.error(`Exporting ${result['title']} failed due to video file ${result['videoPath']} not existing`);
-      return { 'status': ExportReponse.MISSING_VIDEO }
+  for (const trace of traces) {
+    const id = trace.traceId;
+    const videoFound = trace.videoFound;
+    if (!videoFound) {
+      // Don't bother exporting if we can't find the video
+      // We'll present to the user what couldn't be exported afterwards.
+      ignoreTracesList.push(trace);
+      continue;
+    }
+
+    const tracePath = path.join(ROOT_PATH, 'traces', id);
+    const result = await getTitleAndVideoPathFromTrace(tracePath);
+    if (result === null) {
+      log.warn(`Could not get title and video path from the trace ${JSON.stringify(trace)}`);
+      ignoreTracesList.push(trace);
+      continue;
+    }
+
+    if (traces.length === 1) {
+      const zipFileName = sanitizeFilename(result['title']);
+      // custom extension purely so it's identifiable as being the thing to import later, it's just a zip file
+      destFullPath = path.join(destDirPath, `${zipFileName}.apx`);
+    }
+
+    const zipFolderPath = path.join(result['title'])
+    zip.addLocalFolder(tracePath, zipFolderPath);
+
+    // The option to cache a video implies the video is already in the folder that will be zipped.
+    // Only add the video file in if it doesn't already exist in this trace folder
+    const doesVideoExistInTraceFolder = result['videoPath'].includes(tracePath);
+    if (!doesVideoExistInTraceFolder) {
+      if (await checkFileExists(result['videoPath'])) {
+        const targetPathInZip = path.join(zipFolderPath, 'video.mp4');
+        zip.addLocalFile(result['videoPath'], targetPathInZip);
+      } else {
+        log.error(`Exporting ${result['title']} failed due to video file ${result['videoPath']} not existing`);
+        ignoreTracesList.push(trace);
+        zip.deleteFile(zipFolderPath);
+        continue;
+      }
     }
   }
 
@@ -443,11 +468,12 @@ async function exportTrace(request) {
     zip.writeZip(destFullPath);
     shell.showItemInFolder(destFullPath);
     return {
-      'status': ExportReponse.OK
+      'status': ExportReponse.OK,
+      'ignored': ignoreTracesList,
     };
   } catch (err) {
-    log.error(`Failed to zip ${tracePath}`);
-    log.error(`Error = ${err.toString()}`);
+    log.error(`Failed to zip ${destFullPath}\n${JSON.stringify(request)}\nError=${err.message}`);
+    log.error(`Error = ${err.message}`);
     return {
       'status': ExportReponse.ERROR,
       'error': err
@@ -458,6 +484,9 @@ async function exportTrace(request) {
 async function getTitleAndVideoPathFromTrace(tracePath) {
   const jsonPath = path.join(tracePath, 'trace.json');
   const jsonTrace = await readJsonFile(jsonPath);
+  if (jsonTrace === null) {
+    return null;
+  }
   return {
     'title': jsonTrace['title'],
     'videoPath': jsonTrace['videoPath']
@@ -493,38 +522,56 @@ async function importTrace(request) {
 
   log.debug(`Import trace request: ${JSON.stringify(request)}`);
 
+  // request['traces'] is a list of .apx files (zips)
   for (const file of request['traces']) {
-    const id = uuidv4();
-    const outputPath = path.join(ROOT_PATH, 'traces', id);
-
+    const outputPath = path.join(ROOT_PATH, 'temp', 'importing');
     try {
       await fs.mkdir(outputPath, { recursive: true });
+
       const zip = new AdmZip(file);
       zip.extractAllTo(outputPath, true);
 
-      // update json 'videoPath' to point to this new directory
-      const traceFile = path.join(outputPath, 'trace.json');
-      const json = await readJsonFile(traceFile);
-      const newVideoPath = path.join(outputPath, 'video.mp4');
-      json['videoPath'] = newVideoPath;
-      await fs.writeFile(traceFile, JSON.stringify(json));
+      const traceRoot = path.join(ROOT_PATH, 'traces');
+      const dirContents = await fs.readdir(outputPath);
+      for (const importingTrace of dirContents) {
+        const srcPath = path.join(outputPath, importingTrace);
+
+        const id = uuidv4();
+        const destPath = path.join(traceRoot, id);
+        await fs.mkdir(destPath);
+
+        try {
+          await fs.cp(srcPath, destPath, { recursive: true });
+        } catch (err) {
+          log.error(`Failed to copy contents of ${srcPath} to ${destPath}: ${err.message}`);
+          continue;
+        }
+
+        const traceFile = path.join(destPath, 'trace.json');
+        const json = await readJsonFile(traceFile);
+        const newVideoPath = path.join(destPath, 'video.mp4');
+        json['videoPath'] = newVideoPath;
+        await fs.writeFile(traceFile, JSON.stringify(json));
+      }
+
+      await fs.rmdir(outputPath, { recursive: true });
 
     } catch (err) {
       log.error(`Failed to import ${file}`);
       log.error('Error:', err.message, 'Stack:', err.stack);
-
+      fs.rmdir(outputPath, { recursive: true });
       return {
         'status': ImportResponse.ERROR,
         'error': err
       };
     }
-  };
+  }
 
   return {
     'status': ImportResponse.OK
-  };
-
+  }
 }
+
 /* read */
 async function readTrace(request) {
   const ReadResponse = Object.freeze({
@@ -705,8 +752,14 @@ async function checkFileExists(file) {
 }
 
 async function readJsonFile(filePath) {
-  const data = await fs.readFile(filePath, 'utf8');
-  return JSON.parse(data);
+  try {
+    const data = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+  }
+  catch (err) {
+    log.error(`Failed to read json file ${filePath}. Error = ${err.message}`);
+    return null;
+  }
 }
 
 // IMPLEMENT THIS on next version

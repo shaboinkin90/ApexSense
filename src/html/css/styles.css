@@ -118,14 +118,17 @@ header {
 }
 
 .load-header-row {
+  align-items: center;
   display: flex;
   height: auto;
   justify-content: space-between;
 }
 
 .load-header-text {
+  left: 50%;
   padding: 1%;
-  position: relative;
+  position: absolute;
+  transform: translateX(-50%);
 }
 
 .search-container {
