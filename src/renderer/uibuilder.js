@@ -889,8 +889,18 @@ function displayTraces(result) {
   loadView.hidden = false;
   document.getElementById('main-content').hidden = true;
 
+  const exportAllBtn = document.getElementById('export-all-btn-load-view');
+  if (!exportAllBtn.hasAttribute('click-listener-applied')) {
+    exportAllBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const request = {
+        traces: traces,
+      };
+      window.electron.selectExportLocationDialogPrompt(request);
+    });
+  }
   const importBtn = document.getElementById('import-btn-load-view');
-  if (importBtn.getAttribute('click-listener-applied') !== 'true') {
+  if (!importBtn.hasAttribute('click-listener-applied')) {
     importBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const request = {
@@ -900,7 +910,8 @@ function displayTraces(result) {
     });
   }
   // not sure how best to prevent adding multiple listeners so condition on an attribute
-  importBtn.setAttribute('click-listener-applied', 'true');
+  importBtn.setAttribute('click-listener-applied', '');
+  exportAllBtn.setAttribute('click-listener-applied', '');
 
   const list = document.getElementById('load-trace-list');
   list.innerHTML = '';
@@ -952,14 +963,13 @@ function displayTraces(result) {
       listItem.appendChild(fixBtn);
     }
 
-    // TODO: An "export all" toggle seems appropriate
     const exportBtn = document.createElement('button');
     exportBtn.className = 'btn btn-outline-info me-2'
     exportBtn.textContent = 'Export';
     exportBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const request = {
-        'traceId': id,
+        'traces': [trace],
       };
       window.electron.selectExportLocationDialogPrompt(request);
     });

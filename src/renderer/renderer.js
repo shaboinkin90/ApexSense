@@ -414,9 +414,16 @@ window.electron.receive('export-location-complete', (result) => {
 
   const request = {
     'type': 'export',
-    'traceId': result['traceId'],
+    'traces': result['traces'],
     'outputDest': result['outputDest'],
   };
+
+  if (result.hasOwnProperty('traceId')) {
+    request['traceId'] = result['traceId'];
+  } else if (result.hasOwnProperty('traces')) {
+    request['traces'] = result['traces'];
+  }
+
   window.electron.traceFileIO(request);
 });
 

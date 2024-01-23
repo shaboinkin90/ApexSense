@@ -61,9 +61,10 @@ ipcMain.on('import-traces-dialog-prompt', (_e, request) => {
 ipcMain.on('export-location-dialog-prompt', (_e, request) => {
   mainLogic.selectExportLocationDialogPrompt((dialogResult) => {
     const result = {
-      'traceId': request['traceId'],
       'outputDest': dialogResult,
+      'traces': request['traces'],
     };
+
     mainWindow.webContents.send('export-location-complete', result);
   });
 })

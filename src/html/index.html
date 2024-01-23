@@ -203,17 +203,25 @@
       </div> <!-- main-content -->
       <div id="load-trace-view" class="load-trace-view" hidden>
         <div class="load-header-row">
-          <button id="back-btn-load-view" class="btn">
-            <svg width="32px" height="32px">
-              <use xlink:href="#back"></use>
-            </svg>
-          </button>
+          <div>
+            <button id="back-btn-load-view" class="btn">
+              <svg width="32px" height="32px">
+                <use xlink:href="#back"></use>
+              </svg>
+            </button>
+          </div>
           <div class="load-header-text">
             <h2>Load a Trace</h2>
           </div>
-          <button id="import-btn-load-view" class="btn btn-light mt-3 mb-3 me-4">
-            Import
-          </button>
+          <div>
+            <button id="export-all-btn-load-view" class="btn btn-info mt-3 mb-3 me-2">
+              Export all
+            </button>
+            <button id="import-btn-load-view" class="btn btn-light mt-3 mb-3 me-4">
+              Import
+            </button>
+          </div>
+
         </div>
         <div class="search-container">
           <input type="text" class="search-view" id="search-bar" placeholder="Search...">
