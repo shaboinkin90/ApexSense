@@ -381,6 +381,7 @@ async function createTrace(request) {
     log.error(error);
     return {
       'status': ResponseStatus.ERROR,
+      'index': request['index'],
       'error': error,
     };
   }
@@ -585,6 +586,7 @@ async function readTrace(request) {
   if (json === null) {
     return {
       'status': ReadResponse.ERROR,
+      'index': request['index'],
       'error': error
     };
   }
@@ -651,6 +653,7 @@ async function readAllTraces(request) {
     log.error(`Failed to readall traces. Error: ${error.message}`);
     return {
       'status': ReadAllResponse.ERROR,
+      'index': request['index'],
       'error': error
     };
   }
@@ -698,27 +701,32 @@ async function updateTrace(request) {
   });
 
   log.debug(`Update trace request: ${JSON.stringify(request)}`);
+  const traceFile = path.join(ROOT_PATH, 'traces', request['traceId'], 'trace.json')
+  const json = await readJsonFile(traceFile);
+
+  if (request.hasOwnProperty('title')) {
+    json['title'] = request['title'];
+  } else if (request.hasOwnProperty('updatedVideoPath')) {
+    json['videoPath'] = request['updatedVideoPath'];
+  }
 
   try {
-    const traceFile = path.join(ROOT_PATH, 'traces', request['traceId'], 'trace.json')
-    const json = await readJsonFile(traceFile);
-
-    json['videoPath'] = request['updatedVideoPath'];
-
     await fs.writeFile(traceFile, JSON.stringify(json));
-
   } catch (error) {
     log.error(`Failed to update ${traceFile}. Error: ${error.message}`);
     return {
       'status': UpdateResponse.ERROR,
+      'index': request['index'],
       'error': error,
     }
   }
 
   return {
     'status': UpdateResponse.OK,
+    'index': request['index'],
   };
 }
+
 
 /* delete */
 async function deleteTrace(request) {
@@ -735,6 +743,7 @@ async function deleteTrace(request) {
       log.error(`Error removing ${userPath}.${error}`);
       return {
         'status': DeleteReponse.ERROR,
+        'index': request['index'],
         'error': error
       };
     }
