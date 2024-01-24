@@ -916,6 +916,19 @@ function displayTraces(result) {
   const list = document.getElementById('load-trace-list');
   list.innerHTML = '';
 
+  function listItemClickHandler(index, tracePath, videoPath) {
+    return function (e) {
+      e.stopPropagation();
+      const request = {
+        'index': index,
+        'type': 'read',
+        'tracePath': tracePath,
+        'videoPath': videoPath,
+      };
+      window.electron.traceFileIO(request);
+    };
+  }
+
   traces.forEach(trace => {
     const title = trace.title;
     const id = trace.traceId;
@@ -924,6 +937,8 @@ function displayTraces(result) {
 
     const listItem = document.createElement('li');
     listItem.className = "trace-list-item";
+    let clickListItem = listItemClickHandler(index, trace.tracePath, videoPath);
+    listItem.addEventListener('click', clickListItem);
 
     const titleStyleDiv = document.createElement('div');
     titleStyleDiv.style.flexGrow = '1';
@@ -963,8 +978,45 @@ function displayTraces(result) {
       listItem.appendChild(fixBtn);
     }
 
+    // I don't like how many buttons are appearing here..
+    // I'd consider a dropdown menu or something but I don't like hiding things
+    function handleRenameKeypress(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        titleDiv.contentEditable = 'false';
+        // index is undefined when attempting to add it again without recreation,
+        // so, recreate
+        const request = {
+          'type': 'update',
+          'index': index,
+          'title': titleDiv.textContent,
+          'traceId': trace.traceId,
+        };
+        window.electron.traceFileIO(request);
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        titleDiv.contentEditable = 'false';
+        // cancel change
+        titleDiv.textContent = title;
+        listItem.addEventListener('click', clickListItem);
+      }
+    }
+
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'btn btn-outline-light me-2';
+    renameBtn.textContent = 'Rename';
+    renameBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      listItem.removeEventListener('click', clickListItem);
+
+      titleDiv.contentEditable = 'true';
+      titleDiv.focus();
+      titleDiv.addEventListener('keydown', handleRenameKeypress);
+    });
+
     const exportBtn = document.createElement('button');
-    exportBtn.className = 'btn btn-outline-info me-2'
+    exportBtn.className = 'btn btn-outline-info me-2';
     exportBtn.textContent = 'Export';
     exportBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -987,19 +1039,9 @@ function displayTraces(result) {
       window.electron.traceFileIO(request);
     });
 
+    listItem.appendChild(renameBtn);
     listItem.appendChild(exportBtn);
     listItem.appendChild(deleteBtn);
-    listItem.addEventListener('click', (e) => {
-      e.stopPropagation();
-
-      const request = {
-        'index': index,
-        'type': 'read',
-        'tracePath': trace.tracePath,
-        'videoPath': videoPath,
-      };
-      window.electron.traceFileIO(request);
-    });
 
     list.appendChild(listItem);
   });

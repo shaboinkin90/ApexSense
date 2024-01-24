@@ -445,6 +445,11 @@ window.electron.receive('trace-io-complete', (result) => {
       displayTraces(result);
       break;
     case 'update':
+      if (result['status'] !== 'ok') {
+        showToast('Updating unsuccessful', false);
+      } else {
+        showToast('Updating successful', true);
+      }
       // FIXME: lazy - update particular row, not refresh the entire list
       window.electron.traceFileIO({
         'type': 'readall',
