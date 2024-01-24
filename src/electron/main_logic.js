@@ -108,7 +108,7 @@ async function extractProcessingBinary() {
     // FIXME: error handling, can't run app if these ops fail
     extractFromAsar(binaryPathSrc, binaryPathDest);
 
-    if (os.platform() !== 'win32') {
+    if (platform !== 'win32') {
       // set executable
       fs.chmod(binaryPathDest, '0775');
     }
@@ -129,7 +129,7 @@ async function extractFromAsar(src, dest) {
   }
 }
 
-// Remove temporary .json files on exit
+// Remove temporary files on exit
 async function cleanUp() {
   const tempFolderPath = path.join(ROOT_PATH, 'temp');
   try {
@@ -163,8 +163,8 @@ async function runPythonScript(args, callback) {
       'status': PythonStatus.UNSUPPORTED_TYPE,
       'index': index,
     });
+    return;
   }
-
 
   let outputPath = path.join(ROOT_PATH, 'temp');
   let process = null;
@@ -272,19 +272,20 @@ async function getPythonPath() {
       cmd = 'where python3';
     }
 
-    const { stdout } = await execPromise(cmd);
+    const { stdout, stderr } = await execPromise(cmd);
 
-    if (stdout.split('\n').length < 1) {
+    const stdoutOutput = stdout.split('\n');
+    if (stdoutOutput.length < 1) {
       if (platform === 'win32') {
-        log.warn(`Did not find python3 from where. Attempt 'python' if installed through the Windows Store`);
+        log.warn(`Did not find python3 from 'where'. Attempt 'python' if installed through the Windows Store`);
         return 'python';
       } else {
-        log.error(`Failed to get the path to python. stdout = ${stdout}`);
+        log.error(`Failed to get the path to python. stdout = ${stdout} stderr = ${stderr}`);
         return null;
       }
     }
 
-    const pythonPath = stdout.split('\n')[0].trim();
+    const pythonPath = stdoutOutput[0].trim();
 
     if (platform === 'win32' && pythonPath.includes('WindowsApps')) {
       // If the path is for the Windows store version, you get weird error messages trying to 
