@@ -449,7 +449,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       if (files.length > 0) {
         const videoFile = files[0];
         if (videoFile.type === 'video/mp4') {
-          // FIXME: check video dimensions are expected before starting. 
+          // FIXME: check video dimensions are expected before starting. do in script, error with reason
           leftColumn['dropZoneContainer'].container.hidden = true;
           leftColumn['videoContainer'].container.hidden = false;
           leftColumn['videoContainer'].videoPlayer.src = URL.createObjectURL(videoFile);
@@ -909,6 +909,7 @@ function displayTraces(result) {
       window.electron.selectFilesToImportDialogPrompt(request);
     });
   }
+
   // not sure how best to prevent adding multiple listeners so condition on an attribute
   importBtn.setAttribute('click-listener-applied', '');
   exportAllBtn.setAttribute('click-listener-applied', '');
@@ -978,14 +979,11 @@ function displayTraces(result) {
       listItem.appendChild(fixBtn);
     }
 
-    // I don't like how many buttons are appearing here..
-    // I'd consider a dropdown menu or something but I don't like hiding things
     function handleRenameKeypress(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         titleDiv.contentEditable = 'false';
-        // index is undefined when attempting to add it again without recreation,
-        // so, recreate
+        // index is undefined when attempting to add it again
         const request = {
           'type': 'update',
           'index': index,
@@ -997,7 +995,6 @@ function displayTraces(result) {
       if (e.key === 'Escape') {
         e.preventDefault();
         titleDiv.contentEditable = 'false';
-        // cancel change
         titleDiv.textContent = title;
         listItem.addEventListener('click', clickListItem);
       }
@@ -1088,16 +1085,13 @@ class VideoSyncing {
     const videoElement = this.videoQueue.dequeue();
 
     if (!videoElement) {
-      console.debug("No more videos in the queue.");
       return null;
     }
 
     if (!document.getElementById(videoElement.id)) {
-      console.warn(`${videoElement.id} no longer exists - trace was probably removed`);
       return this.getNextVideo();
     }
 
-    console.debug(`Get ${videoElement.id} from queue - state = ${this.state}`);
     return videoElement;
   }
 

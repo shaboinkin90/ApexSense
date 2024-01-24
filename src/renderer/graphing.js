@@ -137,6 +137,7 @@ class GForcePlot {
 
     // Normalize values to [-1, 1] due to opencv giving us pixel coordinates. 
     // Converting pixels to a g-force value requires more thought. See comment in processing/garmin_video_processing.py
+    // TODO: move this to script, avoid doing more processing on UI
     const normX = GraphDataUtilities.normalizeData(xVals);
     const normY = GraphDataUtilities.normalizeData(yVals);
 
@@ -268,6 +269,8 @@ class Plot2DStrategy extends PlotStrategy {
       }, 100);
     });
 
+    // TODO: Investigate using requestAnimationFrame(callback) instead of using 'timeupdate'
+    // 'timeupdate' fires about once every 0.3 seconds. This makes the marker move sporadically
     this.videoPlayer.addEventListener('timeupdate', this.#updatePlotMarker);
   }
 
@@ -441,6 +444,8 @@ class Plot3DStrategy extends PlotStrategy {
       }, 100);
     });
 
+    // TODO: Investigate using requestAnimationFrame(callback) instead of using 'timeupdate'
+    // 'timeupdate' fires about once every 0.3 seconds. This makes the marker move sporadically
     this.videoPlayer.addEventListener('timeupdate', this.#updatePlotMarker);
   }
 
@@ -470,8 +475,6 @@ class Plot3DStrategy extends PlotStrategy {
     // tracking to the same point in time, we only need to do it once.
     // Using `debounce` will take too long.
     if (this.prevTime == this.videoPlayer.currentTime) {
-      console.log('updatePlotMarker no change');
-
       return;
     }
 
