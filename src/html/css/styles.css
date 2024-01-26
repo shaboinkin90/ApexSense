@@ -205,6 +205,10 @@ header {
   background-color: #f5f5f516;
 }
 
+.editable {
+  cursor: text;
+}
+
 /* Rows */
 .rows-container {
   align-self: center;
