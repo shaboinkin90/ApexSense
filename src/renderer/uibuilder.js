@@ -914,11 +914,8 @@ function displayTraces(result) {
   importBtn.setAttribute('click-listener-applied', '');
   exportAllBtn.setAttribute('click-listener-applied', '');
 
-  const list = document.getElementById('load-trace-list');
-  list.innerHTML = '';
-
   function listItemClickHandler(index, tracePath, videoPath) {
-    return function (e) {
+    return (e) => {
       e.stopPropagation();
       const request = {
         'index': index,
@@ -930,6 +927,9 @@ function displayTraces(result) {
     };
   }
 
+  const list = document.getElementById('load-trace-list');
+  list.innerHTML = '';
+
   traces.forEach(trace => {
     const title = trace.title;
     const id = trace.traceId;
@@ -938,6 +938,7 @@ function displayTraces(result) {
 
     const listItem = document.createElement('li');
     listItem.className = "trace-list-item";
+
     let clickListItem = listItemClickHandler(index, trace.tracePath, videoPath);
     listItem.addEventListener('click', clickListItem);
 
@@ -979,11 +980,31 @@ function displayTraces(result) {
       listItem.appendChild(fixBtn);
     }
 
+    function handleOutsideClick(e) {
+      if (!titleDiv.contains(e.target)) {
+        titleDiv.textContent = title;
+        titleDiv.contentEditable = 'false';
+        titleDiv.classList.remove('editable');
+        if (titleStyleDiv.lastElementChild && titleStyleDiv.lastElementChild.id === 'rename-hint') {
+          titleStyleDiv.removeChild(titleStyleDiv.lastElementChild);
+        }
+        document.removeEventListener('click', handleOutsideClick);
+        listItem.addEventListener('click', clickListItem);
+      }
+    }
+
     function handleRenameKeypress(e) {
       if (e.key === 'Enter') {
         e.preventDefault();
         titleDiv.contentEditable = 'false';
-        // index is undefined when attempting to add it again
+        titleDiv.classList.remove('editable');
+        if (titleStyleDiv.lastElementChild && titleStyleDiv.lastElementChild.id === 'rename-hint') {
+          titleStyleDiv.removeChild(titleStyleDiv.lastElementChild);
+        }
+
+        listItem.addEventListener('click', clickListItem);
+        document.removeEventListener('click', handleOutsideClick);
+
         const request = {
           'type': 'update',
           'index': index,
@@ -997,6 +1018,11 @@ function displayTraces(result) {
         titleDiv.contentEditable = 'false';
         titleDiv.textContent = title;
         listItem.addEventListener('click', clickListItem);
+        titleDiv.classList.remove('editable');
+        if (titleStyleDiv.lastElementChild && titleStyleDiv.lastElementChild.id === 'rename-hint') {
+          titleStyleDiv.removeChild(titleStyleDiv.lastElementChild);
+        }
+        document.removeEventListener('click', handleOutsideClick);
       }
     }
 
@@ -1008,8 +1034,17 @@ function displayTraces(result) {
       listItem.removeEventListener('click', clickListItem);
 
       titleDiv.contentEditable = 'true';
+      titleDiv.classList.add('editable');
       titleDiv.focus();
       titleDiv.addEventListener('keydown', handleRenameKeypress);
+      if (titleStyleDiv.lastElementChild && titleStyleDiv.lastElementChild.id !== 'rename-hint') {
+        const div = document.createElement('div');
+        div.className = 'm-1';
+        div.id = 'rename-hint';
+        div.textContent = "Press '\Enter'\ to save";
+        titleStyleDiv.appendChild(div);
+      }
+      document.addEventListener('click', handleOutsideClick, true);
     });
 
     const exportBtn = document.createElement('button');
