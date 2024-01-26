@@ -49,13 +49,17 @@ async function createAppSupportFolder() {
     }
   }
 
-  // Stores python generated output files
+  // Stores generated output files
   const tempFolderPath = path.join(ROOT_PATH, 'temp');
+  const tempExportPath = path.join(ROOT_PATH, 'temp', 'exporting');
+  const tempImportPath = path.join(ROOT_PATH, 'temp', 'importing');
 
   // User storage
   const tracesDataPath = path.join(ROOT_PATH, 'traces');
 
   await makedir(tempFolderPath);
+  await makedir(tempExportPath);
+  await makedir(tempImportPath);
   await makedir(tracesDataPath);
 
   // extract and store the video processing binary
@@ -138,6 +142,10 @@ async function cleanUp() {
       const filePath = path.join(tempFolderPath, file);
       await fs.unlink(filePath);
     }
+
+    await fs.rm(path.join(tempFolderPath, 'exporting'), { recursive: true });
+    await fs.rm(path.join(tempFolderPath, 'importing'), { recursive: true });
+
   } catch (err) {
     log.warn(`Error on clean up: ${err.message}`);
   }
@@ -455,8 +463,17 @@ async function exportTrace(request) {
     const doesVideoExistInTraceFolder = result['videoPath'].includes(tracePath);
     if (!doesVideoExistInTraceFolder) {
       if (await checkFileExists(result['videoPath'])) {
-        const targetPathInZip = path.join(zipFolderPath, 'video.mp4');
-        zip.addLocalFile(result['videoPath'], targetPathInZip);
+        const tempVideoExport = path.join(ROOT_PATH, 'temp', 'exporting', 'video.mp4');
+        try {
+          await fs.copyFile(result['videoPath'], tempVideoExport);
+          zip.addLocalFile(tempVideoExport, zipFolderPath);
+          await fs.rm(tempVideoExport);
+        } catch (error) {
+          log.error(`Exporting error while attempting to make a copy of the video! ${JSON.stringify(result)} Error = ${error.message}`);
+          ignoreTracesList.push(trace);
+          zip.deleteFile(zipFolderPath);
+          continue;
+        }
       } else {
         log.error(`Exporting ${result['title']} failed due to video file ${result['videoPath']} not existing`);
         ignoreTracesList.push(trace);
@@ -556,12 +573,12 @@ async function importTrace(request) {
         await fs.writeFile(traceFile, JSON.stringify(json));
       }
 
-      await fs.rmdir(outputPath, { recursive: true });
+      await fs.rm(outputPath, { recursive: true });
 
     } catch (err) {
       log.error(`Failed to import ${file}`);
       log.error('Error:', err.message, 'Stack:', err.stack);
-      fs.rmdir(outputPath, { recursive: true });
+      fs.rm(outputPath, { recursive: true });
       return {
         'status': ImportResponse.ERROR,
         'error': err
