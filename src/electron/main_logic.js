@@ -456,7 +456,7 @@ async function exportTrace(request) {
     }
 
     const zipFolderPath = path.join(result['title'])
-    zip.addLocalFolder(tracePath, zipFolderPath);
+    await zip.addLocalFolderPromise(tracePath, zipFolderPath);
 
     // The option to cache a video implies the video is already in the folder that will be zipped.
     // Only add the video file in if it doesn't already exist in this trace folder
@@ -484,7 +484,7 @@ async function exportTrace(request) {
   }
 
   try {
-    zip.writeZip(destFullPath);
+    await zip.writeZipPromise(destFullPath);
     shell.showItemInFolder(destFullPath);
     return {
       'status': ExportReponse.OK,

@@ -881,11 +881,16 @@ function adjustPlotlyGraph() {
   });
 }
 
+// need a better way of updating state, making new traces or removing them
+// will not be updated when `exportAllBtn` is clicked.
+let savedTraces = []
+
 // Builds the loading view
 function displayTraces(result) {
   const traces = result['traces'];
   const index = result['index']
 
+  savedTraces = traces;
   loadView.hidden = false;
   document.getElementById('main-content').hidden = true;
 
@@ -894,7 +899,7 @@ function displayTraces(result) {
     exportAllBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       const request = {
-        traces: traces,
+        traces: savedTraces,
       };
       window.electron.selectExportLocationDialogPrompt(request);
     });
