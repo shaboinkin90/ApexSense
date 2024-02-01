@@ -140,11 +140,25 @@ async function cleanUp() {
     const files = await fs.readdir(tempFolderPath);
     for (const file of files) {
       const filePath = path.join(tempFolderPath, file);
-      await fs.unlink(filePath);
+      const stats = await fs.stat(filePath);
+      if (!stats.isDirectory()) {
+        await fs.unlink(filePath);
+      }
     }
 
-    await fs.rm(path.join(tempFolderPath, 'exporting'), { recursive: true });
-    await fs.rm(path.join(tempFolderPath, 'importing'), { recursive: true });
+    const exportPath = path.join(tempFolderPath, 'exporting');
+    fs.access(exportPath, async error => {
+      if (!error) {
+        await fs.rm(exportPath, { recursive: true });
+      }
+    });
+
+    const importPath = path.join(tempFolderPath, 'importing');
+    fs.access(importPath, async error => {
+      if (!error) {
+        await fs.rm(importPath, { recursive: true });
+      }
+    });
 
   } catch (err) {
     log.warn(`Error on clean up: ${err.message}`);
@@ -456,8 +470,8 @@ async function exportTrace(request) {
     }
 
     const zipFolderPath = path.join(result['title'])
-    await zip.addLocalFolderPromise(tracePath, zipFolderPath);
-
+    await zip.addLocalFolderPromise(tracePath, { zipPath: zipFolderPath });
+    zip.addLocalFolder(tracePath, zipFolderPath);
     // The option to cache a video implies the video is already in the folder that will be zipped.
     // Only add the video file in if it doesn't already exist in this trace folder
     const doesVideoExistInTraceFolder = result['videoPath'].includes(tracePath);
@@ -465,6 +479,7 @@ async function exportTrace(request) {
       if (await checkFileExists(result['videoPath'])) {
         const tempVideoExport = path.join(ROOT_PATH, 'temp', 'exporting', 'video.mp4');
         try {
+          // copy, rename, rm copy
           await fs.copyFile(result['videoPath'], tempVideoExport);
           zip.addLocalFile(tempVideoExport, zipFolderPath);
           await fs.rm(tempVideoExport);
@@ -533,52 +548,88 @@ function selectImportFilesDialogPrompt(callback) {
     });
 }
 
+async function updateJsonAfterImport(destPath) {
+  const traceFile = path.join(destPath, 'trace.json');
+  const json = await readJsonFile(traceFile);
+  if (json === null) {
+    return false;
+  }
+
+  const newVideoPath = path.join(destPath, 'video.mp4');
+  json['videoPath'] = newVideoPath;
+  await fs.writeFile(traceFile, JSON.stringify(json));
+}
+
 async function importTrace(request) {
   const ImportResponse = Object.freeze({
     ERROR: 'error',
+    WARN: 'warn',
     OK: 'ok'
   });
 
   log.debug(`Import trace request: ${JSON.stringify(request)}`);
-
+  let importingOk = true;
   // request['traces'] is a list of .apx files (zips)
   for (const file of request['traces']) {
-    const outputPath = path.join(ROOT_PATH, 'temp', 'importing');
+    const importingPath = path.join(ROOT_PATH, 'temp', 'importing');
     try {
-      await fs.mkdir(outputPath, { recursive: true });
+      await fs.mkdir(importingPath, { recursive: true });
 
       const zip = new AdmZip(file);
-      zip.extractAllTo(outputPath, true);
+      zip.extractAllTo(importingPath, true);
 
       const traceRoot = path.join(ROOT_PATH, 'traces');
-      const dirContents = await fs.readdir(outputPath);
-      for (const importingTrace of dirContents) {
-        const srcPath = path.join(outputPath, importingTrace);
+      const extractedFolders = await fs.readdir(importingPath);
 
-        const id = uuidv4();
-        const destPath = path.join(traceRoot, id);
-        await fs.mkdir(destPath);
-
+      if (extractedFolders.includes('trace.json') && extractedFolders.includes('video.mp4')) {
+        // v1.0.0 of app only allowed extracting one trace at a time, and placed the files directly inside
+        // instead of in unique folders per trace. Moving to a database makes more sense now. Just export the
+        // tables and import. Too much filesystem manipulation for a trivial operation.
         try {
-          await fs.cp(srcPath, destPath, { recursive: true });
-        } catch (err) {
-          log.error(`Failed to copy contents of ${srcPath} to ${destPath}: ${err.message}`);
-          continue;
+          const destPath = path.join(traceRoot, uuidv4());
+          await fs.mkdir(destPath);
+          await fs.cp(path.join(importingPath, 'trace.json'), path.join(destPath, 'trace.json'));
+          await fs.cp(path.join(importingPath, 'video.mp4'), path.join(destPath, 'video.mp4'));
+
+          if (!updateJsonAfterImport(destPath)) {
+            importingOk = false;
+          }
+
+          await fs.rm(importingPath, { recursive: true });
+
+        } catch (error) {
+          log.error(`Failed to copy contents Error = ${error.message}`);
+          return {
+            'status': ImportResponse.ERROR,
+            'error': error
+          };
         }
+      } else {
+        for (const folder of extractedFolders) {
+          if (folder.startsWith('.')) {
+            continue;
+          }
 
-        const traceFile = path.join(destPath, 'trace.json');
-        const json = await readJsonFile(traceFile);
-        const newVideoPath = path.join(destPath, 'video.mp4');
-        json['videoPath'] = newVideoPath;
-        await fs.writeFile(traceFile, JSON.stringify(json));
+          try {
+            const destPath = path.join(traceRoot, uuidv4());
+            const importingTracePath = path.join(importingPath, folder);
+            await fs.mkdir(destPath);
+            await fs.cp(importingTracePath, destPath, { recursive: true });
+
+            if (!updateJsonAfterImport(destPath)) {
+              importingOk = false;
+            }
+
+            await fs.rm(importingTracePath, { recursive: true });
+          } catch (err) {
+            log.error(`Failed to copy contents of ${importingPath} to ${destPath}: ${err.message}`);
+            continue;
+          }
+        }
       }
-
-      await fs.rm(outputPath, { recursive: true });
-
     } catch (err) {
-      log.error(`Failed to import ${file}`);
-      log.error('Error:', err.message, 'Stack:', err.stack);
-      fs.rm(outputPath, { recursive: true });
+      log.error(`Failed to import ${file} - Error: ${err.message}`);
+      fs.rm(importingPath, { recursive: true });
       return {
         'status': ImportResponse.ERROR,
         'error': err
@@ -587,7 +638,7 @@ async function importTrace(request) {
   }
 
   return {
-    'status': ImportResponse.OK
+    'status': (importingOk) ? ImportResponse.OK : ImportResponse.WARN
   }
 }
 
@@ -632,7 +683,6 @@ async function readAllTraces(request) {
     const tracesPath = path.join(ROOT_PATH, 'traces');
     const traceFolder = await getTraces(tracesPath);
     if (Object.keys(traceFolder).length < 1) {
-      log.warn(`There is no traces at ${tracesPath}`);
       return {
         'status': ReadAllResponse.OK,
         'index': request['index'],
@@ -651,6 +701,10 @@ async function readAllTraces(request) {
       }
 
       const jsonTrace = await readJsonFile(traceFile);
+      if (jsonTrace === null) {
+        continue;
+      }
+
       const videoFound = await checkFileExists(jsonTrace['videoPath']);
       traces.push({
         'traceId': traceId,
