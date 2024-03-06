@@ -90,11 +90,17 @@ ipcMain.on('trace-file-io', async (_e, request) => {
       break;
 
     case 'read':
+      if ('overlay' in request) {
+        result['overlay'] = request['overlay'];
+      }
       const readResult = await mainLogic.readTrace(request);
       result = { ...result, ...readResult };
       break;
 
     case 'readall':
+      if ('overlay' in request) {
+        result['overlay'] = request['overlay'];
+      }
       const readAllResult = await mainLogic.readAllTraces(request);
       result = { ...result, ...readAllResult };
       break;

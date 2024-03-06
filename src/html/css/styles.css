@@ -255,6 +255,14 @@ header {
   padding-top: 1vh;
 }
 
+.overlay-options-row {
+  align-items: center;
+  display: flex;
+  flex-direction: row;
+  padding: 2vh;
+  width: 100%;
+}
+
 .vertical-divider {
   background-color: #A9A9A9;
   height: 80%;
@@ -419,4 +427,14 @@ header {
   font-size: smaller;
   height: 28px;
   width: 58px;
+}
+
+.small-button {
+  align-items: center;
+  display: flex !important;
+  font-size: 16px !important;
+  height: 1.3em;
+  justify-content: center;
+  margin-left: 1vh;
+  width: 1em;
 }

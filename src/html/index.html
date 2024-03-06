@@ -98,6 +98,13 @@
     <symbol id="stop" viewBox="0 0 24 24">
       <rect fill="#000000" x="5" y="5" width="14" height="14"></rect>
     </symbol>
+    <symbol id="minus" viewBox="0 0 24 24" width="20" height="20">
+      <line x1="5" y1="12" x2="19" y2="12" stroke="#333" stroke-width="2" />
+    </symbol>
+    <symbol id="plus" viewBox="0 0 24 24" width="20" height="20">
+      <line x1="12" y1="5" x2="12" y2="19" stroke="#333" stroke-width="2" />
+      <line x1="5" y1="12" x2="19" y2="12" stroke="#333" stroke-width="2" />
+    </symbol>
   </svg>
 
   <main>
@@ -110,14 +117,13 @@
           <div class="add-remove-trace-controls">
             <button class="btn control-button" id="minus-button">
               <svg viewBox="0 0 24 24" width="20" height="20">
-                <line x1="5" y1="12" x2="19" y2="12" stroke="#333" stroke-width="2" />
+                <use href="#minus" xlink:href="#minus"></use>
               </svg>
             </button>
             <span id="num-traces-label" style="color: black;">1 Trace</span>
             <button class="btn control-button" id="plus-button">
               <svg viewBox="0 0 24 24" width="20" height="20">
-                <line x1="12" y1="5" x2="12" y2="19" stroke="#333" stroke-width="2" />
-                <line x1="5" y1="12" x2="19" y2="12" stroke="#333" stroke-width="2" />
+                <use href="#plus" xlink:href="#plus"></use>
               </svg>
             </button>
           </div>
@@ -211,7 +217,7 @@
             </button>
           </div>
           <div class="load-header-text">
-            <h2>Load a Trace</h2>
+            <h2 id="load-trace-title-text">Load a Trace</h2>
           </div>
           <div>
             <button id="export-all-btn-load-view" class="btn btn-info mt-3 mb-3 me-2">
