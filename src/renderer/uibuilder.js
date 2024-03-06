@@ -137,9 +137,6 @@ function buildLeftColumn(rowIndex) {
   const dividerLeft = document.createElement('div');
   dividerLeft.className = 'vertical-divider';
 
-  const dividerRight = document.createElement('div');
-  dividerRight.className = 'vertical-divider';
-
   const viewButtonGroup = document.createElement('div');
   viewButtonGroup.className = 'btn-group apex-graph-view-buttons';
   viewButtonGroup.setAttribute('role', 'group');
@@ -172,12 +169,15 @@ function buildLeftColumn(rowIndex) {
   viewButtonGroup.appendChild(input2D);
   viewButtonGroup.appendChild(label2D);
 
+  const dividerRight = document.createElement('div');
+  dividerRight.className = 'vertical-divider';
+
   const videoControls = document.createElement('div');
   videoControls.className = 'video-controls';
 
-  const playPauseButton = createButton('#', 'btn', null, '#play');
-  const stopButton = createButton('#', 'btn', null, '#stop');
-  const audioButton = createButton('#', 'btn', null, '#audio-off');
+  const playPauseButton = createButton('#', '', null, '#play');
+  const stopButton = createButton('#', '', null, '#stop');
+  const audioButton = createButton('#', '', null, '#audio-off');
 
   videoControls.appendChild(playPauseButton);
   videoControls.appendChild(stopButton);
@@ -190,6 +190,18 @@ function buildLeftColumn(rowIndex) {
   buttonsRow.appendChild(viewButtonGroup);
   buttonsRow.appendChild(dividerRight);
   buttonsRow.appendChild(videoControls);
+
+  // Overlay options
+  const overlayRow = document.createElement('div');
+  overlayRow.id = `overlay-${rowIndex}`
+  overlayRow.className = 'overlay-options-row'; // FIXME, maybe something different
+  overlayRow.textContent = "Overlay traces";
+
+  const addOverlayBtn = document.createElement('button');
+  addOverlayBtn.className = 'btn btn-light small-button';
+  addOverlayBtn.textContent = '+';
+
+  overlayRow.appendChild(addOverlayBtn);
 
   // Drop zone container
   const dropZoneContainer = document.createElement('div');
@@ -222,6 +234,7 @@ function buildLeftColumn(rowIndex) {
   videoContainer.appendChild(videoPlayer);
 
   leftColumn.appendChild(buttonsRow);
+  leftColumn.appendChild(overlayRow);
   leftColumn.appendChild(dropZoneContainer);
   leftColumn.appendChild(videoContainer);
 
@@ -245,6 +258,10 @@ function buildLeftColumn(rowIndex) {
       'playPause': playPauseButton,
       'stop': stopButton,
       'audio': audioButton,
+    },
+    'overlayControls': {
+      'addOverlayBtn': addOverlayBtn,
+      'overlayList': '',
     },
     'dropZoneContainer': {
       'container': dropZoneContainer,
@@ -402,7 +419,10 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       saveCard.setAttribute('save-event-row-id', rowIndex);
     });
     loadBtn.addEventListener('click', () => {
-      window.electron.traceFileIO({ 'type': 'readall', 'index': rowIndex });
+      window.electron.traceFileIO({
+        'type': 'readall',
+        'index': rowIndex,
+      });
     });
   }
 
@@ -425,6 +445,18 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       rightColumn['plotly'].top.setAttribute('has-data', '');
       rightColumn['plotly'].bottom.setAttribute('has-data', '');
       gForcePlot.viewGraph('2d');
+    });
+  }
+
+  // add overlays and overlays applied list with remove btns
+  {
+    const addOverlayBtn = leftColumn['overlayControls'].addOverlayBtn;
+    addOverlayBtn.addEventListener('click', () => {
+      window.electron.traceFileIO({
+        'type': 'readall',
+        'overlay': true,
+        'index': rowIndex,
+      });
     });
   }
 
@@ -881,6 +913,59 @@ function adjustPlotlyGraph() {
   });
 }
 
+function displayOverlayTraces(result) {
+  const traces = result['traces'];
+  const index = result['index'];
+
+  loadView.hidden = false;
+  document.getElementById('main-content').hidden = true;
+  document.getElementById('load-trace-title-text').textContent = 'Select a Trace to Overlay';
+  document.getElementById('export-all-btn-load-view').hidden = true;
+  document.getElementById('import-btn-load-view').hidden = true;
+
+  function listItemClickHandler(index, tracePath, videoPath) {
+    return (e) => {
+      e.stopPropagation();
+      const request = {
+        'index': index,
+        'type': 'read',
+        'overlay': true,
+        'tracePath': tracePath,
+        'videoPath': videoPath,
+      };
+      window.electron.traceFileIO(request);
+    };
+  }
+
+  const list = document.getElementById('load-trace-list');
+  list.innerHTML = '';
+
+  traces.forEach(trace => {
+    const title = trace.title;
+    const videoPath = trace.videoPath;
+
+    const listItem = document.createElement('li');
+    listItem.className = "trace-list-item";
+
+    let clickListItem = listItemClickHandler(index, trace.tracePath, videoPath);
+    listItem.addEventListener('click', clickListItem);
+
+    const titleStyleDiv = document.createElement('div');
+    titleStyleDiv.style.flexGrow = '1';
+
+    const titleDiv = document.createElement('div');
+    titleDiv.className = "trace-item-title";
+    titleDiv.textContent = title;
+    titleStyleDiv.appendChild(titleDiv);
+
+    listItem.appendChild(titleStyleDiv);
+
+
+    list.appendChild(listItem);
+  });
+}
+
+
 // need a better way of updating state, making new traces or removing them
 // will not be updated when `exportAllBtn` is clicked.
 let savedTraces = []
@@ -888,11 +973,14 @@ let savedTraces = []
 // Builds the loading view
 function displayTraces(result) {
   const traces = result['traces'];
-  const index = result['index']
+  const index = result['index'];
 
   savedTraces = traces;
   loadView.hidden = false;
   document.getElementById('main-content').hidden = true;
+  document.getElementById('load-trace-title-text').textContent = 'Load a Trace';
+  document.getElementById('export-all-btn-load-view').hidden = false;
+  document.getElementById('import-btn-load-view').hidden = false;
 
   const exportAllBtn = document.getElementById('export-all-btn-load-view');
   if (!exportAllBtn.hasAttribute('click-listener-applied')) {

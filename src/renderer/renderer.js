@@ -80,7 +80,6 @@ syncVideoPlaybackCheckBtn.addEventListener('click', () => {
   shouldSyncVideos = !shouldSyncVideos;
 });
 
-
 // MAIN-CONTENT
 function landingViewTransistion() {
   document.getElementById('landing-view').hidden = true;
@@ -214,12 +213,15 @@ function loadTraceCompletion(result) {
 
   leftColumn['dropZoneContainer'].container.hidden = true;
   leftColumn['videoContainer'].container.hidden = false;
-  leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
+
+  if (!('overlay' in result)) {
+    // Don't update the video with the one we want to overlay, keep the initial video the same
+    leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
+  }
+
   if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
     leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
   }
-
-  rightColumn['loadingSpinner'].hidden = true;
 
   const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
   const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
@@ -227,6 +229,7 @@ function loadTraceCompletion(result) {
   toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
   toggleElementVisability(true, [headerSyncToggles]);
 
+  rightColumn['loadingSpinner'].hidden = true;
   rightColumn['plotly'].top.hidden = false;
   rightColumn['plotly'].bottom.hidden = true;
 
@@ -237,8 +240,14 @@ function loadTraceCompletion(result) {
     'title': title
   };
 
-  uiElements.gForcePlot.prepareGraphs(params);
-  uiElements.gForcePlot.viewGraph('3d');
+  if ('overlay' in result) {
+    // ideally, selecting a trace to overlay would allow multiple selections, hence the array
+    // but that's not implemented
+    uiElements.gForcePlot.overlayTraces([params]);
+  } else {
+    uiElements.gForcePlot.prepareGraphs(params);
+    uiElements.gForcePlot.viewGraph('3d');
+  }
 }
 
 function isVideoPlaying(videoElement) {
@@ -435,7 +444,11 @@ window.electron.receive('trace-io-complete', (result) => {
       loadTraceCompletion(result);
       break;
     case 'readall':
-      displayTraces(result);
+      if ('overlay' in result) {
+        displayOverlayTraces(result)
+      } else {
+        displayTraces(result);
+      }
       break;
     case 'update':
       if (result['status'] !== 'ok') {

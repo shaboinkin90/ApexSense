@@ -26,8 +26,12 @@ class GForcePlot {
       this.#title = parameters['title'];
     }
 
-    const graphData = this.#processTraceData();
-    if (parameters['view'] == '3d') {
+    const xVals = this.#rawTrace.map(point => point.x);
+    const yVals = this.#rawTrace.map(point => point.y);
+    const zVals = this.#rawTrace.map(point => point.z);
+
+    const graphData = this.#processTraceData(xVals, yVals, zVals);
+    if (parameters['view'] === '3d') {
       const mode = {
         'view': '3d',
       }
@@ -45,6 +49,27 @@ class GForcePlot {
     this.#graph2dHorizontal = this.#createPlot(mode, this.#graphDivs.bottom, graphData, this.#videoPlayer);
   }
 
+  overlayTraces(newTraceParameters) {
+    let dataToPlot = [];
+    if (newTraceParameters.length === 0) {
+      console.warn('No trace data to overlay.')
+      return;
+    }
+
+    // array of traces, parameters in same form as original parameters
+    for (const params of newTraceParameters) {
+      const rawTrace = params['trace'].data.trace;
+      const xVals = rawTrace.map(point => point.x);
+      const yVals = rawTrace.map(point => point.y);
+      const zVals = rawTrace.map(point => point.z);
+      let traceData = this.#processTraceData(xVals, yVals, zVals);
+      traceData['name'] = params['title'];
+      dataToPlot.push(traceData);
+    }
+
+    this.#graph3d.overlayTraces(dataToPlot);
+
+  }
 
   viewGraph(view) {
     switch (view) {
@@ -125,10 +150,9 @@ class GForcePlot {
     this.#graphDivs.bottom.removeAttribute('has-data');
   }
 
-  #processTraceData() {
-    const xVals = this.#rawTrace.map(point => point.x);
-    const yVals = this.#rawTrace.map(point => point.y);
-    const zVals = this.#rawTrace.map(point => point.z);
+
+
+  #processTraceData(xVals, yVals, zVals) {
 
     if (xVals.length == 0 || yVals.length == 0 || zVals.length == 0) {
       console.log("Invalid trace data returned from processing");
@@ -191,6 +215,10 @@ class PlotStrategy {
 
   createPlotlyGraph(title, fps, syncCallback) {
     throw new ("Extend PlotStrategy and implement updateGraph");
+  }
+
+  overlayTraces(newTraceParameters) {
+    throw new ("Extend PlotStrategy and implemtn overlayTraces")
   }
 
   changeView(cameraOption) {
@@ -272,6 +300,10 @@ class Plot2DStrategy extends PlotStrategy {
     // TODO: Investigate using requestAnimationFrame(callback) instead of using 'timeupdate'
     // 'timeupdate' fires about once every 0.3 seconds. This makes the marker move sporadically
     this.videoPlayer.addEventListener('timeupdate', this.#updatePlotMarker);
+  }
+
+  overlayTraces(newTraceParameters) {
+
   }
 
   changeView(cameraOption) {
@@ -449,6 +481,22 @@ class Plot3DStrategy extends PlotStrategy {
     this.videoPlayer.addEventListener('timeupdate', this.#updatePlotMarker);
   }
 
+  overlayTraces(newTraceParameters) {
+    for (const param of newTraceParameters) {
+      Plotly.addTraces(this.plotlyDiv, {
+        x: param['x'],
+        y: param['y'],
+        z: param['z'],
+        type: 'scatter3d',
+        mode: 'lines',
+        name: param['name'],
+        hoverinfo: 'none',
+        line: {
+          width: 2,
+        },
+      });
+    }
+  }
   changeView(position) {
     const cameraPosition = this.#getCameraPosition(position);
     Plotly.relayout(this.plotlyDiv, cameraPosition);
