@@ -8,6 +8,7 @@ class GForcePlot {
   #graph3d = null;
   #graph2dLateral = null;
   #graph2dHorizontal = null;
+  #currentView = '3d';
 
   constructor(parameters) {
     this.#graphDivs = {
@@ -58,7 +59,7 @@ class GForcePlot {
 
     // array of traces, parameters in same form as original parameters
     for (const params of newTraceParameters) {
-      const rawTrace = params['trace'].data.trace;
+      const rawTrace = params['trace'];
       const xVals = rawTrace.map(point => point.x);
       const yVals = rawTrace.map(point => point.y);
       const zVals = rawTrace.map(point => point.z);
@@ -67,8 +68,16 @@ class GForcePlot {
       dataToPlot.push(traceData);
     }
 
-    this.#graph3d.overlayTraces(dataToPlot);
+    if (this.#currentView === '3d') {
+      this.#graph3d.overlayTraces(dataToPlot);
+    } else {
+      this.#graph2dHorizontal.overlayTraces();
+      this.#graph2dLateral.overlayTraces();
+    }
+  }
 
+  removeOverlaidTraces() {
+    this.#graph3d.removeOverlaidTraces();
   }
 
   viewGraph(view) {
@@ -211,6 +220,7 @@ class PlotStrategy {
     this.graphData = graphData;
     this.videoPlayer = videoPlayer;
     this.prevTime = 0;
+    this.overlaidTraceNames = [];
   }
 
   createPlotlyGraph(title, fps, syncCallback) {
@@ -218,7 +228,11 @@ class PlotStrategy {
   }
 
   overlayTraces(newTraceParameters) {
-    throw new ("Extend PlotStrategy and implemtn overlayTraces")
+    throw new ("Extend PlotStrategy and implement overlayTraces");
+  }
+
+  removeOverlaidTraces() {
+    throw new ("extend PlotStrategy and implement removeOverlaidTraces");
   }
 
   changeView(cameraOption) {
@@ -306,6 +320,10 @@ class Plot2DStrategy extends PlotStrategy {
 
   }
 
+  removeOverlaidTraces() {
+    this.overlaidTraceNames.length = 0;
+  }
+
   changeView(cameraOption) {
     // no-op
   }
@@ -321,6 +339,7 @@ class Plot2DStrategy extends PlotStrategy {
     this.plotlyDiv.removeAttribute('has-data');
     this.prevTime = 0;
     this.videoPlayer.removeEventListener('timeupdate', this.#updatePlotMarker);
+    this.overlaidTraceNames.length = 0;
   }
 
   #updatePlotMarker = () => {
@@ -483,6 +502,11 @@ class Plot3DStrategy extends PlotStrategy {
 
   overlayTraces(newTraceParameters) {
     for (const param of newTraceParameters) {
+      if (this.overlaidTraceNames.includes(param['name'])) {
+        console.log(`${param['name']} already applied`);
+        continue;
+      }
+
       Plotly.addTraces(this.plotlyDiv, {
         x: param['x'],
         y: param['y'],
@@ -495,8 +519,27 @@ class Plot3DStrategy extends PlotStrategy {
           width: 2,
         },
       });
+      this.overlaidTraceNames.push(param['name']);
     }
   }
+
+  removeOverlaidTraces() {
+    // [0] == original plot, [1] == marker, [2+] == overlaid plots
+    if (this.plotlyDiv.data.length == 2) {
+      console.log('No traces to remove')
+      return;
+    }
+
+    let indicesToRemove = []
+    const startIdx = 2;
+    for (let i = startIdx; i < this.plotlyDiv.data.length; i++) {
+      indicesToRemove.push(i);
+    }
+
+    Plotly.deleteTraces(this.plotlyDiv, indicesToRemove);
+    this.overlaidTraceNames.length = 0;
+  }
+
   changeView(position) {
     const cameraPosition = this.#getCameraPosition(position);
     Plotly.relayout(this.plotlyDiv, cameraPosition);
@@ -513,6 +556,7 @@ class Plot3DStrategy extends PlotStrategy {
     this.plotlyDiv.removeAttribute('has-data');
     this.prevTime = 0;
     this.videoPlayer.removeEventListener('timeupdate', this.#updatePlotMarker);
+    this.overlaidTraceNames.length = 0;
   }
 
   #updatePlotMarker = () => {

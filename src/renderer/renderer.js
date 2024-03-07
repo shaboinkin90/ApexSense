@@ -57,6 +57,7 @@ toggleElementVisability(false, [headerCompareButtons, headerSyncToggles]);
 
 const minusBtn = document.getElementById('minus-button').addEventListener('click', () => {
   removeRow();
+  // update overlaid if toggled
 });
 
 const plusBtn = document.getElementById('plus-button').addEventListener('click', () => {
@@ -79,6 +80,44 @@ const syncVideoPlaybackCheckBtn = document.getElementById('sync-video-checkbox')
 syncVideoPlaybackCheckBtn.addEventListener('click', () => {
   shouldSyncVideos = !shouldSyncVideos;
 });
+
+// overlay graphs
+const overlayCheckBtn = document.getElementById('overlay-traces-checkbox');
+overlayCheckBtn.addEventListener('click', () => {
+  if (overlayCheckBtn.checked) {
+    addOverlayTraces(rowUIElementMap);
+  } else {
+    removeOverlayTraces(rowUIElementMap);
+  }
+});
+
+function addOverlayTraces(rowMap) {
+  rowMap.forEach((row, index) => {
+    console.log(`Adding overlay to row-${index}`);
+    let tracesToApply = [];
+    rowUIElementMap.forEach((rowIter, indexIter) => {
+      if (indexIter === index) {
+        return;
+      }
+
+      const title = rowIter['dataStash'].title;
+      const trace = rowIter['dataStash'].data.trace;
+      tracesToApply.push({
+        'title': title,
+        'trace': trace
+      });
+    });
+
+    row['gForcePlot'].overlayTraces(tracesToApply);
+  });
+}
+
+function removeOverlayTraces(rowMap) {
+  rowMap.forEach((row, index) => {
+    console.log(`Remove overlay from ${index}`);
+    row['gForcePlot'].removeOverlaidTraces();
+  });
+}
 
 // MAIN-CONTENT
 function landingViewTransistion() {
@@ -213,11 +252,7 @@ function loadTraceCompletion(result) {
 
   leftColumn['dropZoneContainer'].container.hidden = true;
   leftColumn['videoContainer'].container.hidden = false;
-
-  if (!('overlay' in result)) {
-    // Don't update the video with the one we want to overlay, keep the initial video the same
-    leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
-  }
+  leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
 
   if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
     leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
@@ -233,20 +268,22 @@ function loadTraceCompletion(result) {
   rightColumn['plotly'].top.hidden = false;
   rightColumn['plotly'].bottom.hidden = true;
 
+  // Cache for overlay option
+  uiElements['dataStash'] = result['trace'];
+
   const title = result['trace']['title'];
   const params = {
     'view': '3d',
     'trace': result['trace'],
-    'title': title
+    'title': title,
   };
 
-  if ('overlay' in result) {
-    // ideally, selecting a trace to overlay would allow multiple selections, hence the array
-    // but that's not implemented
-    uiElements.gForcePlot.overlayTraces([params]);
-  } else {
-    uiElements.gForcePlot.prepareGraphs(params);
-    uiElements.gForcePlot.viewGraph('3d');
+  //uiElements.gForcePlot.overlayTraces([params]);
+  uiElements.gForcePlot.prepareGraphs(params);
+  uiElements.gForcePlot.viewGraph('3d');
+
+  if (overlayCheckBtn.checked) {
+    addOverlayTraces(rowUIElementMap);
   }
 }
 
