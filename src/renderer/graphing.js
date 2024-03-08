@@ -51,6 +51,10 @@ class GForcePlot {
   }
 
   overlayTraces(newTraceParameters) {
+    if (this.#rawTrace === null) {
+      return
+    }
+
     let dataToPlot = [];
     if (newTraceParameters.length === 0) {
       console.warn('No trace data to overlay.')
@@ -71,16 +75,25 @@ class GForcePlot {
     if (this.#currentView === '3d') {
       this.#graph3d.overlayTraces(dataToPlot);
     } else {
-      this.#graph2dHorizontal.overlayTraces();
-      this.#graph2dLateral.overlayTraces();
+      this.#graph2dHorizontal.overlayTraces(dataToPlot);
+      this.#graph2dLateral.overlayTraces(dataToPlot);
     }
   }
 
-  removeOverlaidTraces() {
-    this.#graph3d.removeOverlaidTraces();
+  removeOverlaidTraces(specificIndexToRemove) {
+    if (this.#rawTrace !== null) {
+      if (this.#currentView === '3d') {
+        this.#graph3d.removeOverlaidTraces(specificIndexToRemove);
+      } else {
+        this.#graph2dHorizontal.removeOverlaidTraces(specificIndexToRemove);
+        this.#graph2dLateral.removeOverlaidTraces(specificIndexToRemove);
+
+      }
+    }
   }
 
   viewGraph(view) {
+    this.#currentView = view;
     switch (view) {
       case '2d': {
         this.#graph3d.clear();
@@ -148,18 +161,22 @@ class GForcePlot {
   clearGraphs() {
     if (this.#graph3d) {
       this.#graph3d.clear();
+      this.#graph3d = null;
     }
     if (this.#graph2dHorizontal) {
       this.#graph2dHorizontal.clear();
+      this.#graph2dHorizontal = null;
     }
     if (this.#graph2dLateral) {
       this.#graph2dLateral.clear();
+      this.#graph2dLateral = null;
     }
     this.#graphDivs.top.removeAttribute('has-data');
     this.#graphDivs.bottom.removeAttribute('has-data');
+    this.#title = null;
+    this.#fps = null;
+    this.#rawTrace = null;
   }
-
-
 
   #processTraceData(xVals, yVals, zVals) {
 
@@ -231,7 +248,7 @@ class PlotStrategy {
     throw new ("Extend PlotStrategy and implement overlayTraces");
   }
 
-  removeOverlaidTraces() {
+  removeOverlaidTraces(specificIndexToRemove) {
     throw new ("extend PlotStrategy and implement removeOverlaidTraces");
   }
 
@@ -317,11 +334,56 @@ class Plot2DStrategy extends PlotStrategy {
   }
 
   overlayTraces(newTraceParameters) {
+    for (const param of newTraceParameters) {
+      if (this.overlaidTraceNames.includes(param['name'])) {
+        console.log(`${param['name']} already applied`);
+        continue;
+      }
 
+      const type = this.mode.type;
+      const frames = param['z'];
+      const data = (type === 'lateral') ? param['x'] : param['y'];
+      Plotly.addTraces(this.plotlyDiv, {
+        x: frames,
+        y: data,
+        type: 'scatter',
+        mode: 'lines',
+        name: param['name'],
+        hoverinfo: 'none',
+        line: {
+          width: 1,
+        },
+      });
+      this.overlaidTraceNames.push(param['name']);
+    }
   }
 
-  removeOverlaidTraces() {
-    this.overlaidTraceNames.length = 0;
+  removeOverlaidTraces(specificIndexToRemove) {
+    // [0] == original plot, [1] == marker, [2+] == overlaid plots
+    if (this.plotlyDiv.data.length == 2) {
+      console.log('No traces to remove')
+      return;
+    }
+
+    // coupled with the UI layout - remove a single row, we remove only the last overlaid plot
+    if (specificIndexToRemove !== undefined) {
+      if (specificIndexToRemove >= this.plotlyDiv.data.length) {
+        console.error(`Invalid overlay index ${specificIndexToRemove} - ${this.plotlyDiv.data.length} entries exist`)
+        return;
+      }
+
+      Plotly.deleteTraces(this.plotlyDiv, [specificIndexToRemove]);
+      this.overlaidTraceNames.splice(specificIndexToRemove, 1);
+    } else {
+      let indicesToRemove = []
+      const startIdx = 2;
+      for (let i = startIdx; i < this.plotlyDiv.data.length; i++) {
+        indicesToRemove.push(i);
+      }
+
+      Plotly.deleteTraces(this.plotlyDiv, indicesToRemove);
+      this.overlaidTraceNames.length = 0;
+    }
   }
 
   changeView(cameraOption) {
@@ -425,7 +487,7 @@ class Plot2DStrategy extends PlotStrategy {
       y: yData,
       mode: 'lines',
       line: {
-        width: 5,
+        width: 3,
         color: 'red',
       }
     }
@@ -523,21 +585,32 @@ class Plot3DStrategy extends PlotStrategy {
     }
   }
 
-  removeOverlaidTraces() {
+  removeOverlaidTraces(specificIndexToRemove) {
     // [0] == original plot, [1] == marker, [2+] == overlaid plots
     if (this.plotlyDiv.data.length == 2) {
       console.log('No traces to remove')
       return;
     }
 
-    let indicesToRemove = []
-    const startIdx = 2;
-    for (let i = startIdx; i < this.plotlyDiv.data.length; i++) {
-      indicesToRemove.push(i);
-    }
+    // coupled with the UI layout - remove a single row, we remove only the last overlaid plot
+    if (specificIndexToRemove !== undefined) {
+      if (specificIndexToRemove >= this.plotlyDiv.data.length) {
+        console.error(`Invalid overlay index ${specificIndexToRemove} - ${this.plotlyDiv.data.length} entries exist`)
+        return;
+      }
 
-    Plotly.deleteTraces(this.plotlyDiv, indicesToRemove);
-    this.overlaidTraceNames.length = 0;
+      Plotly.deleteTraces(this.plotlyDiv, [specificIndexToRemove]);
+      this.overlaidTraceNames.splice(specificIndexToRemove, 1);
+    } else {
+      let indicesToRemove = []
+      const startIdx = 2;
+      for (let i = startIdx; i < this.plotlyDiv.data.length; i++) {
+        indicesToRemove.push(i);
+      }
+
+      Plotly.deleteTraces(this.plotlyDiv, indicesToRemove);
+      this.overlaidTraceNames.length = 0;
+    }
   }
 
   changeView(position) {

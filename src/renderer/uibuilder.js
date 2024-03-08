@@ -12,8 +12,10 @@ function removeRow() {
     toggleElementVisability(false, [headerSyncToggles]);
     syncVideoPlaybackCheckBtn.checked = false;
     syncGraphViewCheckBtn.checked = false;
-    removeOverlayTraces(rowUIElementMap);
-    overlayCheckBtn.checked = false;
+    if (overlayCheckBtn.checked) {
+      removeOverlayTraces(rowUIElementMap);
+      overlayCheckBtn.checked = false;
+    }
   }
 
   const numTraceLabel = document.getElementById('num-traces-label');
@@ -28,6 +30,15 @@ function removeRow() {
 
   if (match) {
     const mapKey = parseInt(match[0]);
+    if (overlayCheckBtn.checked && viewCount !== 1) {
+      // iterate and remove from other rows
+      rowUIElementMap.forEach((row, index) => {
+        if (mapKey == index) {
+          return;
+        }
+        row['gForcePlot'].removeOverlaidTraces(mapKey);
+      });
+    }
     rowUIElementMap.delete(mapKey);
   } else {
     console.error(`${lastChild.id} malformed!`);
@@ -36,6 +47,15 @@ function removeRow() {
 
   rootDiv.removeChild(lastChild)
   adjustRowItemHeights(rootDiv);
+}
+
+function removeSpecificOverlayFromRows(rowMap, indexToRemove) {
+  rowMap.forEach((row, index) => {
+    if (indexToRemove == index) {
+      return;
+    }
+    row['gForcePlot'].removeOverlaidTraces(indexToRemove);
+  });
 }
 
 function addRow() {
@@ -83,9 +103,10 @@ function buildRow(rootDiv, rowIndex) {
     'leftColumn': leftColumn,
     'rightColumn': rightColumn,
     'gForcePlot': gForcePlot,
-    'dataStash': {
+    'rawDataStash': null,
+    'dataFilePaths': {
       'traceJsonPath': '',
-      'videoPath': '',
+      'videoPath': ''
     },
   });
 
@@ -388,6 +409,13 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
       rightColumn['plotly'].top.hidden = true;
       rightColumn['plotly'].bottom.hidden = true;
+
+      rowUIElementMap.get(rowIndex)['rawDataStash'] = null;
+      rowUIElementMap.get(rowIndex)['dataFilePaths'].traceJsonPath = '';
+      rowUIElementMap.get(rowIndex)['dataFilePaths'].videoPath = '';
+
+      removeOverlayTraces(rowUIElementMap);
+      addOverlayTraces(rowUIElementMap);
     });
 
     saveBtn.addEventListener('click', () => {
@@ -422,6 +450,11 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       rightColumn['plotly'].top.setAttribute('has-data', '');
       rightColumn['plotly'].bottom.removeAttribute('has-data');
       gForcePlot.viewGraph('3d');
+      if (overlayCheckBtn.checked) {
+        addOverlayTraces(rowUIElementMap);
+      } else {
+        removeOverlayTraces(rowUIElementMap);
+      }
     });
     view2dBtn.addEventListener('click', () => {
       rightColumn['plotly'].top.hidden = false;
@@ -430,6 +463,11 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       rightColumn['plotly'].top.setAttribute('has-data', '');
       rightColumn['plotly'].bottom.setAttribute('has-data', '');
       gForcePlot.viewGraph('2d');
+      if (overlayCheckBtn.checked) {
+        addOverlayTraces(rowUIElementMap);
+      } else {
+        removeOverlayTraces(rowUIElementMap);
+      }
     });
   }
 

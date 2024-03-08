@@ -57,7 +57,6 @@ toggleElementVisability(false, [headerCompareButtons, headerSyncToggles]);
 
 const minusBtn = document.getElementById('minus-button').addEventListener('click', () => {
   removeRow();
-  // update overlaid if toggled
 });
 
 const plusBtn = document.getElementById('plus-button').addEventListener('click', () => {
@@ -93,15 +92,17 @@ overlayCheckBtn.addEventListener('click', () => {
 
 function addOverlayTraces(rowMap) {
   rowMap.forEach((row, index) => {
+
     console.log(`Adding overlay to row-${index}`);
     let tracesToApply = [];
+
     rowUIElementMap.forEach((rowIter, indexIter) => {
-      if (indexIter === index) {
+      if (indexIter === index || rowIter['rawDataStash'] === null) {
         return;
       }
 
-      const title = rowIter['dataStash'].title;
-      const trace = rowIter['dataStash'].data.trace;
+      const title = (rowIter['rawDataStash'].title) ? rowIter['rawDataStash'].title : `Row ${indexIter}`;
+      const trace = rowIter['rawDataStash'].data.trace;
       tracesToApply.push({
         'title': title,
         'trace': trace
@@ -112,6 +113,7 @@ function addOverlayTraces(rowMap) {
   });
 }
 
+// Remove all overlaid traces
 function removeOverlayTraces(rowMap) {
   rowMap.forEach((row, index) => {
     console.log(`Remove overlay from ${index}`);
@@ -154,8 +156,8 @@ function saveAction() {
   const uiElements = rowUIElementMap.get(parseInt(rowIndex, 10));
 
   const shouldCacheVideo = document.getElementById('store-video-checkbox').checked;
-  const videoPath = uiElements['dataStash'].videoPath;
-  const jsonPath = uiElements['dataStash'].traceJsonPath;
+  const videoPath = uiElements['dataFilePaths'].videoPath;
+  const jsonPath = uiElements['dataFilePaths'].traceJsonPath;
   const saveRequest = {
     'type': 'create',
     'index': rowIndex,
@@ -250,6 +252,8 @@ function loadTraceCompletion(result) {
   const leftColumn = uiElements['leftColumn'];
   const rightColumn = uiElements['rightColumn'];
 
+  leftColumn['viewToggleButtons'].v3d.checked = true;
+  leftColumn['viewToggleButtons'].v2d.checked = false;
   leftColumn['dropZoneContainer'].container.hidden = true;
   leftColumn['videoContainer'].container.hidden = false;
   leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
@@ -269,7 +273,7 @@ function loadTraceCompletion(result) {
   rightColumn['plotly'].bottom.hidden = true;
 
   // Cache for overlay option
-  uiElements['dataStash'] = result['trace'];
+  uiElements['rawDataStash'] = result['trace'];
 
   const title = result['trace']['title'];
   const params = {
@@ -283,6 +287,7 @@ function loadTraceCompletion(result) {
   uiElements.gForcePlot.viewGraph('3d');
 
   if (overlayCheckBtn.checked) {
+    removeOverlayTraces(rowUIElementMap);
     addOverlayTraces(rowUIElementMap);
   }
 }
@@ -349,7 +354,7 @@ function syncCameras(originGraph, view, originCamera) {
 function processVideo(videoPath, rowIndex) {
   const uiElements = rowUIElementMap.get(rowIndex);
   if (uiElements) {
-    uiElements['dataStash'].videoPath = videoPath;
+    uiElements['dataFilePaths'].videoPath = videoPath;
     window.electron.runPythonScript('garmincatalyst', videoPath, rowIndex);
   }
 }
@@ -374,14 +379,22 @@ window.electron.receive('python-complete', (result) => {
         uiElements.gForcePlot.prepareGraphs(params);
         uiElements.gForcePlot.viewGraph('3d');
 
-        uiElements['dataStash'].traceJsonPath = result['jsonPath'];
+        uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
         uiElements['rightColumn'].plotly.top.setAttribute('has-data', '');
         uiElements['rightColumn'].plotly.bottom.removeAttribute('has-data');
+        uiElements['rawDataStash'] = {
+          'data': jsonData['data'],
+          'title': null,
+          'videoPath': uiElements['dataFilePaths'].videoPath,
+        };
         const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
         const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
         const videoControls = uiElements['leftColumn'].videoControls.container;
         toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
         toggleElementVisability(true, [headerSyncToggles]);
+        if (overlayCheckBtn.checked) {
+          addOverlayTraces(rowUIElementMap);
+        }
       } catch (error) {
         console.error(`Could not parse the output data ${error}`);
         showToast('There was a problem with generating the graph', false);
