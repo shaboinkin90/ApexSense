@@ -45,6 +45,9 @@ Click on a point on the graph to jump to that location in the video.
 
 Use the +/- buttons to add or remove rows to allow for comparing multiple videos. Use the Sync options to syncronize the playback and views amongst all videos and graphs. 
 
+Check the overlay option to allow traces to be plotted on top of each other for direct comparisions.
+<img src="./readme_assets/readme-overlay-example.jpg" width="1000">Overlay traces</img>
+
 Use the Save button to save your graphs for quick lookup. Use the Load button to view your saved graphs.
 
 You can also export your saved graphs and import them to a different computer.
