@@ -257,6 +257,7 @@ function loadTraceCompletion(result) {
   leftColumn['dropZoneContainer'].container.hidden = true;
   leftColumn['videoContainer'].container.hidden = false;
   leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
+  leftColumn['trimVideoToggle'].div.hidden = false;
 
   if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
     leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
@@ -349,6 +350,8 @@ function syncCameras(originGraph, view, originCamera) {
   });
 }
 
+// callback from GForcePlot start/end trim locations
+
 
 /* IPC */
 function processVideo(videoPath, rowIndex) {
@@ -390,6 +393,7 @@ window.electron.receive('python-complete', (result) => {
         const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
         const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
         const videoControls = uiElements['leftColumn'].videoControls.container;
+        const toggleDiv = uiElements['leftColumn'].trimVideoToggle.div.hidden = false;
         toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
         toggleElementVisability(true, [headerSyncToggles]);
         if (overlayCheckBtn.checked) {

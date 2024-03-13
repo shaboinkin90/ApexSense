@@ -32,13 +32,11 @@ class GForcePlot {
     const zVals = this.#rawTrace.map(point => point.z);
 
     const graphData = this.#processTraceData(xVals, yVals, zVals);
-    if (parameters['view'] === '3d') {
-      const mode = {
-        'view': '3d',
-      }
-      this.#graph3d = this.#createPlot(mode, this.#graphDivs.top, graphData, this.#videoPlayer);
-    }
     let mode = {
+      'view': '3d',
+    }
+    this.#graph3d = this.#createPlot(mode, this.#graphDivs.top, graphData, this.#videoPlayer);
+    mode = {
       'view': '2d',
       'type': 'horizontal',
     };
@@ -89,6 +87,18 @@ class GForcePlot {
         this.#graph2dLateral.removeOverlaidTraces(specificIndexToRemove);
 
       }
+    }
+  }
+
+  trimMode(enable) {
+    if (this.#rawTrace === null) {
+      return
+    }
+    if (this.#currentView === '3d') {
+      this.#graph3d.trimMode(enable);
+    } else {
+      this.#graph2dHorizontal.trimMode(dataToPlot);
+      this.#graph2dLateral.trimMode(dataToPlot);
     }
   }
 
@@ -238,6 +248,11 @@ class PlotStrategy {
     this.videoPlayer = videoPlayer;
     this.prevTime = 0;
     this.overlaidTraceNames = [];
+    this.trimModeEnable = true;
+    this.trimBounds = {
+      'start': null,
+      'end': null,
+    };
   }
 
   createPlotlyGraph(title, fps, syncCallback) {
@@ -250,6 +265,10 @@ class PlotStrategy {
 
   removeOverlaidTraces(specificIndexToRemove) {
     throw new ("extend PlotStrategy and implement removeOverlaidTraces");
+  }
+
+  trimMode(enable) {
+    this.trimMode = enable;
   }
 
   changeView(cameraOption) {
@@ -511,8 +530,13 @@ class Plot2DStrategy extends PlotStrategy {
 
 class Plot3DStrategy extends PlotStrategy {
 
+  createTrimPointMesh() {
+
+  }
+
   createPlotlyGraph(title, fps, syncCallback) {
     this.fps = fps;
+
     const trace = this.#buildTrace(this.graphData.x, this.graphData.y, this.graphData.z);
     const marker = this.#buildMarker(this.graphData.x, this.graphData.y, this.graphData.z);
     const layout = this.#buildLayout(title);
@@ -531,29 +555,94 @@ class Plot3DStrategy extends PlotStrategy {
     // rather than passing the underlying type directly in here
     this.plotlyDiv.on('plotly_click', (eventData) => {
       debounce(() => {
-        console.log('plotly-click');
         const pointData = eventData.points[0];
         const videoFrame = pointData.z;
         const playbackTime = (videoFrame / fps).toFixed(2);
+        if (this.trimModeEnable) {
+          // keep track of a first click and second click
+          // second click *must* be after where the first click pressed
+          // on a click, create a mesh on Z axis showing bounds of trimmed video
 
-        console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
+          // UI:
+          /*
+            Toggle 'trim mode'
+            UI on graph displays text : Click on the graph to set the beginning of the new trimmed video
+            UI: *click on a point* *3d mesh appears* *`start time appears "somewhere" with a button to clear and redo"
+            UI on graph displays text: CLick on the graph to set the end of the new trimmed video
+            UI: *prevent clicking before the new start point*, *click on a point* *3d mesh appears*
+            UI: Confirm selection
+            UI: "trimming video, please wait"
+            UI: Create a new plot
+          */
+          const xBounds = [-1, 1];
+          const yBounds = [-1, 1];
+          if (this.trimBounds['start'] === null) {
+            // this returns back to renderer 
+            this.trimBounds['start'] = Math.floor(playbackTime);
 
-        // if the video is playing, pause first because we'll need to wait for seeking to finish before resuming
-        if (!this.videoPlayer.paused) {
-          console.log(`${this.videoPlayer.id} will pause due to plotly_click`);
-          this.videoPlayer.pause();
-          this.videoPlayer.setAttribute('plotly-paused', '');
+            // trigger UI to switch to end point
+            let xBounds = [-1, 1];
+            let yBounds = [-1, 1];
+            let Zstart = videoFrame;
+            const startPlane = {
+              x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+              y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+              z: [Zstart, Zstart, Zstart, Zstart],
+              i: [0, 0], // Defines two triangles using vertex indices
+              j: [1, 2],
+              k: [2, 3],
+              type: 'mesh3d',
+              opacity: 0.3,
+              color: 'blue',
+              hoverinfo: 'none'
+            };
+            Plotly.addTraces(this.plotlyDiv, [startPlane]);
 
-          // don't set the time until we get the `pause` event.
-          this.videoPlayer.setAttribute('plotly-playback-time', playbackTime);
+          }
+
+          if (this.trimBounds['end'] === null) {
+            this.trimBounds['end'] = Math.floor(playbackTime);
+            let xBounds = [-1, 1];
+            let yBounds = [-1, 1];
+            let Zend = videoFrame;
+            let endPlane = {
+              x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+              y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+              z: [Zend, Zend, Zend, Zend],
+              i: [0, 0],
+              j: [1, 2],
+              k: [2, 3],
+              type: 'mesh3d',
+              opacity: 0.3,
+              color: 'red',
+              hoverinfo: 'none'
+            };
+            Plotly.addTraces(this.plotlyDiv, [endPlane]);
+          }
+
+          if (this.trimBounds['start'] !== null && this.trimBounds['end'] !== null) {
+            // signal UI the start/end times are complete, remove the meshes after trim completes
+          }
+
+
         } else {
-          console.log(`${this.videoPlayer.id} already paused in plotly_click`);
-          this.videoPlayer.setAttribute('plotly-already-paused', '');
-          // safe to seek
-          this.videoPlayer.currentTime = playbackTime;
+          console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
+
+          // if the video is playing, pause first because we'll need to wait for seeking to finish before resuming
+          if (!this.videoPlayer.paused) {
+            console.log(`${this.videoPlayer.id} will pause due to plotly_click`);
+            this.videoPlayer.pause();
+            this.videoPlayer.setAttribute('plotly-paused', '');
+
+            // don't set the time until we get the `pause` event.
+            this.videoPlayer.setAttribute('plotly-playback-time', playbackTime);
+          } else {
+            console.log(`${this.videoPlayer.id} already paused in plotly_click`);
+            this.videoPlayer.setAttribute('plotly-already-paused', '');
+            // safe to seek
+            this.videoPlayer.currentTime = playbackTime;
+          }
         }
-
-
       }, 100);
     });
 

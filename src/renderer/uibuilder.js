@@ -242,11 +242,30 @@ function buildLeftColumn(rowIndex) {
   videoPlayer.id = `video-${rowIndex}`;
   videoPlayer.controls = false;
 
+  const trimVideoTogglediv = document.createElement('div');
+  trimVideoTogglediv.className = 'form-check form-switch';
+
+  const trimToggleInput = document.createElement('input');
+  trimToggleInput.className = 'form-check-input';
+  trimToggleInput.type = 'checkbox';
+  trimToggleInput.role = 'switch';
+  trimToggleInput.id = 'trim-video-toggle';
+
+  const trimToggleLabel = document.createElement('label');
+  trimToggleLabel.className = 'form-check-label';
+  trimToggleLabel.setAttribute('for', 'trim-video-toggle');
+  trimToggleLabel.textContent = 'Trim video mode';
+
+  trimVideoTogglediv.appendChild(trimToggleInput);
+  trimVideoTogglediv.appendChild(trimToggleLabel);
+  trimVideoTogglediv.hidden = true;
+
   videoContainer.appendChild(videoPlayer);
 
   leftColumn.appendChild(buttonsRow);
   leftColumn.appendChild(dropZoneContainer);
   leftColumn.appendChild(videoContainer);
+  leftColumn.appendChild(trimVideoTogglediv);
 
   // Default disabling controls that aren't useable until graphs appear
   toggleElementVisability(false, [saveBtn, viewButtonGroup, videoControls]);
@@ -277,6 +296,10 @@ function buildLeftColumn(rowIndex) {
     'videoContainer': {
       'container': videoContainer,
       'videoPlayer': videoPlayer,
+    },
+    'trimVideoToggle': {
+      'div': trimVideoTogglediv,
+      'input': trimToggleInput,
     },
   };
   return columnContents;
@@ -402,6 +425,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
       leftColumn['viewToggleButtons'].v3d.checked = true;
       leftColumn['viewToggleButtons'].v2d.checked = false;
+      leftColumn['trimVideoToggle'].div.hidden = true;
 
       const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
       const videoControls = leftColumn['videoControls'].container;

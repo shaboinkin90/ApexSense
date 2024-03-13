@@ -121,3 +121,22 @@ ipcMain.on('trace-file-io', async (_e, request) => {
   }
   mainWindow.webContents.send('trace-io-complete', result);
 });
+
+
+ipcMain.on('video-trim', async (_e, request) => {
+  const result = {
+    status: 'OK'
+  };
+
+  trimVideo(request['inputPath'], request['outputPath'], request['startTime'], request['duration'])
+    .then(output => {
+      log.info('Video trim success');
+      result['output'] = output;
+      mainWindow.webContents.send('video-trim-complete', result);
+    })
+    .catch(error => {
+      log.error(error);
+      result['status'] = error;
+      mainWindow.webContents.send('video-trim-complete', result);
+    });
+});
