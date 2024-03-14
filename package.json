@@ -19,7 +19,6 @@
     "electron-log": "^5.0.0",
     "electron-squirrel-startup": "^1.0.0",
     "fluent-ffmpeg": "^2.1.2",
-    "nouislider": "^15.7.1",
     "plotly.js": "^2.26.2",
     "uuid": "^9.0.1"
   },

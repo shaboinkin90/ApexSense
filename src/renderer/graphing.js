@@ -97,9 +97,13 @@ class GForcePlot {
     if (this.#currentView === '3d') {
       this.#graph3d.trimMode(enable);
     } else {
-      this.#graph2dHorizontal.trimMode(dataToPlot);
-      this.#graph2dLateral.trimMode(dataToPlot);
+      this.#graph2dHorizontal.trimMode(enable);
+      this.#graph2dLateral.trimMode(enable);
     }
+  }
+
+  drawStartEndPoints(startPoint, endPoint) {
+    this.#graph3d.drawStartEndPoints(startPoint, endPoint);
   }
 
   viewGraph(view) {
@@ -269,6 +273,9 @@ class PlotStrategy {
 
   trimMode(enable) {
     this.trimMode = enable;
+  }
+  drawStartEndPoints(startPoint, endPoint) {
+    throw new ("Extend PlotStrategy and implement drawStartEndPoints");
   }
 
   changeView(cameraOption) {
@@ -530,8 +537,76 @@ class Plot2DStrategy extends PlotStrategy {
 
 class Plot3DStrategy extends PlotStrategy {
 
-  createTrimPointMesh() {
+  drawStartEndPoints(startPoint, endPoint) {
+    const xBounds = [-1, 1];
+    const yBounds = [-1, 1];
 
+    const videoFrameStart = parseFloat(startPoint);
+    const videoFrameEnd = parseFloat(endPoint);
+
+    const playbackTimeStart = (videoFrameStart / this.fps).toFixed(2);
+    const playbackTimeEnd = (videoFrameEnd / this.fps).toFixed(20);
+
+    let Zstart = Math.floor(videoFrameStart);
+    const startPlane = {
+      x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+      y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+      z: [Zstart, Zstart, Zstart, Zstart],
+      i: [0, 0],
+      j: [1, 2],
+      k: [2, 3],
+      type: 'mesh3d',
+      opacity: 0.3,
+      color: 'rgb(93, 78, 180)',
+      hoverinfo: 'none'
+    };
+
+    const plotData = this.plotlyDiv.data;
+    if (plotData.length == 0) {
+      console.error(`${this.plotlyDiv.id} plotData has no data!`);
+      return;
+    }
+    if (plotData.length == 2) {
+      Plotly.addTraces(this.plotlyDiv, [startPlane]);
+    } else if (plotData.length == 4) {
+      const update = {
+        x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
+        y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
+        z: [[Zstart, Zstart, Zstart, Zstart]],
+        i: [[0, 0]],
+        j: [[1, 2]],
+        k: [[2, 3]],
+      };
+      Plotly.update(this.plotlyDiv, update, {}, [2]);
+    }
+
+    let Zend = videoFrameEnd;
+    let endPlane = {
+      x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+      y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+      z: [Zend, Zend, Zend, Zend],
+      i: [0, 0],
+      j: [1, 2],
+      k: [2, 3],
+      type: 'mesh3d',
+      opacity: 0.3,
+      color: 'rgb(93, 78, 180)',
+      hoverinfo: 'none'
+    };
+    if (plotData.length == 3) {
+      Plotly.addTraces(this.plotlyDiv, [endPlane]);
+
+    } else if (plotData.length == 4) {
+      const update = {
+        x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
+        y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
+        z: [[Zend, Zend, Zend, Zend]],
+        i: [[0, 0]],
+        j: [[1, 2]],
+        k: [[2, 3]],
+      };
+      Plotly.update(this.plotlyDiv, update, {}, [3]);
+    }
   }
 
   createPlotlyGraph(title, fps, syncCallback) {
@@ -560,69 +635,7 @@ class Plot3DStrategy extends PlotStrategy {
         const playbackTime = (videoFrame / fps).toFixed(2);
         if (this.trimModeEnable) {
           // keep track of a first click and second click
-          // second click *must* be after where the first click pressed
-          // on a click, create a mesh on Z axis showing bounds of trimmed video
 
-          // UI:
-          /*
-            Toggle 'trim mode'
-            UI on graph displays text : Click on the graph to set the beginning of the new trimmed video
-            UI: *click on a point* *3d mesh appears* *`start time appears "somewhere" with a button to clear and redo"
-            UI on graph displays text: CLick on the graph to set the end of the new trimmed video
-            UI: *prevent clicking before the new start point*, *click on a point* *3d mesh appears*
-            UI: Confirm selection
-            UI: "trimming video, please wait"
-            UI: Create a new plot
-          */
-          const xBounds = [-1, 1];
-          const yBounds = [-1, 1];
-          if (this.trimBounds['start'] === null) {
-            // this returns back to renderer 
-            this.trimBounds['start'] = Math.floor(playbackTime);
-
-            // trigger UI to switch to end point
-            let xBounds = [-1, 1];
-            let yBounds = [-1, 1];
-            let Zstart = videoFrame;
-            const startPlane = {
-              x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
-              y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
-              z: [Zstart, Zstart, Zstart, Zstart],
-              i: [0, 0], // Defines two triangles using vertex indices
-              j: [1, 2],
-              k: [2, 3],
-              type: 'mesh3d',
-              opacity: 0.3,
-              color: 'blue',
-              hoverinfo: 'none'
-            };
-            Plotly.addTraces(this.plotlyDiv, [startPlane]);
-
-          }
-
-          if (this.trimBounds['end'] === null) {
-            this.trimBounds['end'] = Math.floor(playbackTime);
-            let xBounds = [-1, 1];
-            let yBounds = [-1, 1];
-            let Zend = videoFrame;
-            let endPlane = {
-              x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
-              y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
-              z: [Zend, Zend, Zend, Zend],
-              i: [0, 0],
-              j: [1, 2],
-              k: [2, 3],
-              type: 'mesh3d',
-              opacity: 0.3,
-              color: 'red',
-              hoverinfo: 'none'
-            };
-            Plotly.addTraces(this.plotlyDiv, [endPlane]);
-          }
-
-          if (this.trimBounds['start'] !== null && this.trimBounds['end'] !== null) {
-            // signal UI the start/end times are complete, remove the meshes after trim completes
-          }
 
 
         } else {

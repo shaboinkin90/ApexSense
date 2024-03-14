@@ -257,7 +257,7 @@ function loadTraceCompletion(result) {
   leftColumn['dropZoneContainer'].container.hidden = true;
   leftColumn['videoContainer'].container.hidden = false;
   leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
-  leftColumn['trimVideoToggle'].div.hidden = false;
+  leftColumn['trimVideo'].toggle.div.hidden = false;
 
   if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
     leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
@@ -382,6 +382,24 @@ window.electron.receive('python-complete', (result) => {
         uiElements.gForcePlot.prepareGraphs(params);
         uiElements.gForcePlot.viewGraph('3d');
 
+        // setup trim slider values, take number of Z entries, and use that as the range
+        // later on if trim is performed, Z value must be converted to time value for mmpeg
+        const sliderMin = 0; // change this to whatever the initial start value is so user cannot progress backwards from the start
+        const sliderMax = jsonData['data'].num_frames;
+        const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
+        noUiSlider.create(slider, {
+          start: [sliderMax * 0.2, sliderMax * 0.8],
+          connect: true,
+          range: {
+            'min': sliderMin,
+            'max': sliderMax,
+          },
+        });
+        //toggleElementVisability(false, [slider]);
+        slider.noUiSlider.on('update', function (values, handle) {
+          uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
+        });
+
         uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
         uiElements['rightColumn'].plotly.top.setAttribute('has-data', '');
         uiElements['rightColumn'].plotly.bottom.removeAttribute('has-data');
@@ -393,7 +411,7 @@ window.electron.receive('python-complete', (result) => {
         const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
         const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
         const videoControls = uiElements['leftColumn'].videoControls.container;
-        const toggleDiv = uiElements['leftColumn'].trimVideoToggle.div.hidden = false;
+        uiElements['leftColumn'].trimVideo.toggle.div.hidden = false;
         toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
         toggleElementVisability(true, [headerSyncToggles]);
         if (overlayCheckBtn.checked) {
