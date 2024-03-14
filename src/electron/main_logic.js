@@ -6,7 +6,6 @@ const { v4: uuidv4 } = require('uuid');
 
 const AdmZip = require('adm-zip');
 const asar = require('asar');
-const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs').promises;
 const log = require('electron-log');
 const os = require('os');
@@ -99,16 +98,8 @@ async function extractProcessingBinary() {
   const templateImageSrc = path.join('src', 'processing', 'templates', 'garmin_gforce_template.png');
   const templateImageDest = path.join(ROOT_PATH, 'processing', 'garmincatalyst', 'garmin_gforce_template.png');
 
-  // ffmpeg binary for video trim
-  const ffmpegSrc = path.join('thirdparty', 'ffmpeg', 'dest', 'bin', platform, arch, `ffmpeg${ext}`);
-  const ffmpegDest = path.join(ROOT_PATH, 'processing', 'ffmpeg', `ffmpeg${ext}`);
-  const ffprobeSrc = path.join('thirdparty', 'ffmpeg', 'dest', 'bin', platform, arch, `ffprobe${ext}`);
-  const ffprobeDest = path.join(ROOT_PATH, 'processing', 'ffmpeg', `ffprobe${ext}`);
-
   const binaryExists = await checkFileExists(binaryPathDest);
   const templateExists = await checkFileExists(templateImageDest);
-  const ffmpegExits = await checkFileExists(ffmpegDest);
-  const ffprobeExists = await checkFileExists(ffprobeDest);
 
   if (!binaryExists) {
     // FIXME: error handling, can't run app if these ops fail
@@ -121,22 +112,6 @@ async function extractProcessingBinary() {
 
   if (!templateExists) {
     extractFromAsar(templateImageSrc, templateImageDest);
-  }
-
-  if (!ffmpegExits) {
-    extractFromAsar(ffmpegSrc, ffmpegDest);
-    if (platform !== 'win32') {
-      fs.chmod(ffmpegDest, '0775');
-    }
-    log.debug(`ffmpeg.setFfmpegPath(${ffmpegDest})`);
-    ffmpeg.setFfmpegPath(ffmpegDest);
-  }
-  if (!ffprobeExists) {
-    extractFromAsar(ffprobeSrc, ffprobeDest);
-    if (platform !== 'win32') {
-      fs.chmod(ffprobeDest, '0775');
-    }
-    ffmpeg.setFfprobePath(ffprobeDest);
   }
 }
 
@@ -870,62 +845,6 @@ async function readJsonFile(filePath) {
   }
 }
 
-function trimVideo(inputPath, outputPath, startTime, duration) {
-  // Log the trimming parameters
-  log.info(`Trimming:
-    ${inputPath} to ${outputPath}
-    Start: ${startTime}
-    Duration: ${duration}`);
-
-  return getVideoDuration(inputPath).then(videoDuration => {
-    const startSeconds = convertTimeToSeconds(startTime);
-    const durationSeconds = convertTimeToSeconds(duration);
-
-    if (startSeconds + durationSeconds > videoDuration) {
-      return Promise.reject(new Error("Start time and duration exceed video length."));
-    }
-
-    return new Promise((resolve, reject) => {
-      ffmpeg(inputPath)
-        .setStartTime(startTime)
-        .setDuration(duration)
-        .output(outputPath)
-        .on('end', function () {
-          resolve(outputPath);
-        })
-        .on('error', function (err) {
-          reject(err);
-        })
-        .run();
-    });
-  });
-}
-
-function getVideoDuration(videoPath) {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoPath, function (err, metadata) {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(metadata.format.duration);
-      }
-    });
-  });
-}
-
-function convertTimeToSeconds(timeStr) {
-  const parts = timeStr.split(':').map(part => parseFloat(part));
-  let seconds = 0;
-  if (parts.length === 3) {
-    seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-  } else if (parts.length === 2) {
-    seconds = parts[0] * 60 + parts[1];
-  } else if (parts.length === 1) {
-    seconds = parts[0];
-  }
-  return seconds;
-}
-
 
 // IMPLEMENT THIS on next version
 /*
@@ -1022,5 +941,4 @@ module.exports = {
   readAllTraces,
   updateTrace,
   deleteTrace,
-  trimVideo,
 }

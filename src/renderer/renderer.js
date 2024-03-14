@@ -382,8 +382,7 @@ window.electron.receive('python-complete', (result) => {
         uiElements.gForcePlot.prepareGraphs(params);
         uiElements.gForcePlot.viewGraph('3d');
 
-        // setup trim slider values, take number of Z entries, and use that as the range
-        // later on if trim is performed, Z value must be converted to time value for mmpeg
+
         const sliderMin = 0; // change this to whatever the initial start value is so user cannot progress backwards from the start
         const sliderMax = jsonData['data'].num_frames;
         const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
@@ -396,9 +395,15 @@ window.electron.receive('python-complete', (result) => {
           },
         });
         //toggleElementVisability(false, [slider]);
-        slider.noUiSlider.on('update', function (values, handle) {
+        slider.noUiSlider.on('update', function (values, _handle) {
+          // FIXME: update only the thing that changes, handle == 0, start time, handle == 1, end time
           uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
         });
+
+        uiElements['leftColumn'].trimVideo.commitBtn.addEventListener('click', () => {
+          let timeBounds = uiElements.gForcePlot.commitTrim();
+          uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
+        })
 
         uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
         uiElements['rightColumn'].plotly.top.setAttribute('has-data', '');

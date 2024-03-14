@@ -251,6 +251,10 @@ function buildLeftColumn(rowIndex) {
   trimRangeLabel.setAttribute('for', 'video-trim-range');
   trimRangeLabel.hidden = true;
 
+  const commitTrimBtn = document.createElement('button');
+  commitTrimBtn.className = 'btn btn-primary';
+  commitTrimBtn.style = "width: 100%";
+  commitTrimBtn.textContent = 'Commit';
   const trimRangeSlider = document.createElement('div');
   trimRangeSlider.id = `trim-${rowIndex}`;
   trimRangeSlider.className = 'video-trim-slider';
@@ -274,6 +278,7 @@ function buildLeftColumn(rowIndex) {
   trimToggleLabel.setAttribute('for', 'trim-video-toggle');
   trimToggleLabel.textContent = 'Trim video mode';
 
+
   trimVideoTogglediv.appendChild(trimToggleInput);
   trimVideoTogglediv.appendChild(trimToggleLabel);
   trimVideoTogglediv.hidden = true;
@@ -284,6 +289,7 @@ function buildLeftColumn(rowIndex) {
   leftColumn.appendChild(dropZoneContainer);
   leftColumn.appendChild(videoContainer);
   leftColumn.appendChild(trimRangeLabel);
+  leftColumn.appendChild(commitTrimBtn);
   leftColumn.appendChild(trimRangeSlider);
   leftColumn.appendChild(trimVideoTogglediv);
 
@@ -326,6 +332,7 @@ function buildLeftColumn(rowIndex) {
         'label': trimRangeLabel,
         'slider': trimRangeSlider,
       },
+      'commitBtn': commitTrimBtn,
     },
   };
   return columnContents;

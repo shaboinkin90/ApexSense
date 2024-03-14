@@ -24,16 +24,6 @@ contextBridge.exposeInMainWorld('electron', {
     // request.data // data source is 'type' defined
     ipcRenderer.send('trace-file-io', request);
   },
-  videoTrim: (request) => {
-    // FIXME: check other interfaces' input parameters and only proceed if valid
-    const requiredKeys = ['inputPath', 'outputPath', 'startTime', 'duration'];
-    if (requiredKeys.every(key => key in request)) {
-      ipcRenderer.send('video-trim', request);
-    } else {
-      console.error(`Logic error: ${request} does not have required keys`);
-      return false;
-    }
-  },
   receive: (channel, func) => {
     const validChannels = [
       'python-complete',
@@ -42,7 +32,6 @@ contextBridge.exposeInMainWorld('electron', {
       'import-traces-complete',
       'export-location-complete',
       'trace-io-complete',
-      'video-trim-complete',
     ];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (_event, ...args) => func(...args));
