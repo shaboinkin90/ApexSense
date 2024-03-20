@@ -52,6 +52,20 @@ jobs:
           path: out/make/ApexSense.dmg
           compression-level: 0
 
+      - name: Create ApexSense Dev Mode Platypus app
+        run: platypus -a "ApexSense Dev Mode" -o 'Text Window' -i ./assets/icons/icon.icns -u "Daniel Kulas" -V "1.0.0" -I com.kulas.ApexSense.devmode -y -l ./setup.zsh ./packaging/ApexSense\ Dev\ Mode.app
+
+      - name: Sign ApexSense Dev Mode.app
+        env:
+          MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
+        run: codesign --sign $MAC_SIGNING_IDENTITY --verbose --force --timestamp ./packaging/ApexSense\ Dev\ Mode.app
+        
+      - name: Upload ApexSense Dev Mode.app Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexSense Dev Mode.app
+          path: ./packaging/ApexSense\ Dev\ Mode.app
+
   build-and-upload-windows:
     runs-on: [self-hosted, Windows, X64]
 
