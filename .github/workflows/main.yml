@@ -166,7 +166,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release-step.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/ApexSense\ Dev\ Mode.app
+          asset_path: ${{ github.workspace }}/packaging/ApexSense\ Dev\ Mode.app
           asset_name: ApexSense Dev Mode.app
           asset_content_type: application/octet-stream
 
