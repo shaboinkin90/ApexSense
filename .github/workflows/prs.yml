@@ -58,7 +58,7 @@ jobs:
       - name: Sign ApexSense Dev Mode.app
         env:
           MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
-        run: codesign --sign $MAC_SIGNING_IDENTITY --verbose --force --timestamp ./packaging/ApexSense\ Dev\ Mode.app
+        run: codesign --sign "$MAC_SIGNING_IDENTITY" --verbose --force --timestamp ./packaging/ApexSense\ Dev\ Mode.app
         
       - name: Upload ApexSense Dev Mode.app Artifact
         uses: actions/upload-artifact@v4
