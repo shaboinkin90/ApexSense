@@ -54,6 +54,20 @@ jobs:
           path: out/make/ApexSense.dmg
           compression-level: 0
 
+      - name: Create ApexSense Dev Mode Platypus app
+        run: platypus -a "ApexSense Dev Mode" -o 'Text Window' -i ./assets/icons/icon.icns -u "Daniel Kulas" -V "1.0.0" -I com.kulas.ApexSense.devmode -y -l ./setup.zsh ./packaging/ApexSense\ Dev\ Mode.app
+
+      - name: Sign ApexSense Dev Mode.app
+        env:
+          MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
+        run: codesign --sign $MAC_SIGNING_IDENTITY --verbose --force --timestamp ./packaging/ApexSense\ Dev\ Mode.app
+        
+      - name: Upload ApexSense Dev Mode.app Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexSense Dev Mode.app
+          path: ./packaging/ApexSense\ Dev\ Mode.app
+
   build-windows-x64:
     runs-on: [self-hosted, Windows, X64]
     steps:
@@ -108,7 +122,6 @@ jobs:
           path: out/make/squirrel.windows/x64/ApexSenseSetup.exe
           compression-level: 0
 
-        
   create-release:
     needs: ['build-macOS-ARM64', 'build-windows-x64']
     runs-on: [self-hosted, macOS, ARM64]
@@ -118,6 +131,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ApexSense-macOS-ARM64.dmg
+
+      - name: Download ApexSense Dev Mode.app Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ApexSense Dev Mode.app
 
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
@@ -140,6 +158,16 @@ jobs:
           upload_url: ${{ steps.create-release-step.outputs.upload_url }}
           asset_path: ${{ github.workspace }}/ApexSense.dmg
           asset_name: ApexSense-macOS-ARM64.dmg
+          asset_content_type: application/octet-stream
+
+      - name: Upload ApexSense Dev Mode Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release-step.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/ApexSense\ Dev\ Mode.app
+          asset_name: ApexSense Dev Mode.app
           asset_content_type: application/octet-stream
 
       - name: Upload Windows Release
