@@ -242,11 +242,64 @@ function buildLeftColumn(rowIndex) {
   videoPlayer.id = `video-${rowIndex}`;
   videoPlayer.controls = false;
 
+
+  // FIXME: Don't like the layout - keep for now to exercise code paths
+  const trimRangeLabel = document.createElement('label');
+  trimRangeLabel.id = 'video-trim-label';
+  trimRangeLabel.className = 'form-label video-trim-form-label';
+  trimRangeLabel.textContent = 'Drag slider to where you want to start trimming the video';
+  trimRangeLabel.setAttribute('for', 'video-trim-range');
+  trimRangeLabel.hidden = true;
+
+
+  const trimRangeSlider = document.createElement('div');
+  trimRangeSlider.id = `trim-${rowIndex}`;
+  trimRangeSlider.className = 'video-trim-slider';
+
+  const toggleRow = document.createElement('div');
+  toggleRow.className = 'd-flex row';
+  toggleRow.style = 'width:100%';
+
+  const commitTrimBtn = document.createElement('button');
+  commitTrimBtn.className = 'btn btn-light';
+  commitTrimBtn.textContent = 'Commit';
+
+  const trimVideoTogglediv = document.createElement('div');
+  trimVideoTogglediv.className = 'form-check form-switch';
+
+  const trimToggleInput = document.createElement('input');
+  trimToggleInput.className = 'form-check-input';
+  trimToggleInput.type = 'checkbox';
+  trimToggleInput.role = 'switch';
+  trimToggleInput.id = 'trim-video-toggle';
+  trimToggleInput.setAttribute('data-bs-title', 'Click to enable zooming in on a specific area on the G-force plot');
+  trimToggleInput.setAttribute('data-bs-toggle', 'tooltip');
+  trimToggleInput.setAttribute('data-bs-delay', '{"show":"500", "hide":"250"}');
+  trimToggleInput.setAttribute('hide', '250');
+  trimToggleInput.setAttribute('data-bs-placement', 'bottom');
+
+  const trimToggleLabel = document.createElement('label');
+  trimToggleLabel.className = 'form-check-label';
+  trimToggleLabel.setAttribute('for', 'trim-video-toggle');
+  trimToggleLabel.textContent = 'Trim video mode';
+
+
+  trimVideoTogglediv.appendChild(trimToggleInput);
+  trimVideoTogglediv.appendChild(trimToggleLabel);
+  toggleRow.appendChild(trimVideoTogglediv);
+  toggleRow.appendChild(commitTrimBtn);
+
+  trimVideoTogglediv.hidden = true;
+
   videoContainer.appendChild(videoPlayer);
 
   leftColumn.appendChild(buttonsRow);
   leftColumn.appendChild(dropZoneContainer);
   leftColumn.appendChild(videoContainer);
+  leftColumn.appendChild(trimRangeLabel);
+  leftColumn.appendChild(commitTrimBtn);
+  leftColumn.appendChild(trimRangeSlider);
+  leftColumn.appendChild(toggleRow);
 
   // Default disabling controls that aren't useable until graphs appear
   toggleElementVisability(false, [saveBtn, viewButtonGroup, videoControls]);
@@ -277,6 +330,17 @@ function buildLeftColumn(rowIndex) {
     'videoContainer': {
       'container': videoContainer,
       'videoPlayer': videoPlayer,
+    },
+    'trimVideo': {
+      'toggle': {
+        'div': trimVideoTogglediv,
+        'input': trimToggleInput,
+      },
+      'trimControl': {
+        'label': trimRangeLabel,
+        'slider': trimRangeSlider,
+      },
+      'commitBtn': commitTrimBtn,
     },
   };
   return columnContents;
@@ -402,6 +466,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
       leftColumn['viewToggleButtons'].v3d.checked = true;
       leftColumn['viewToggleButtons'].v2d.checked = false;
+      leftColumn['trimVideo'].toggle.div.hidden = true;
 
       const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
       const videoControls = leftColumn['videoControls'].container;
@@ -858,6 +923,12 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         }
       }, 250);
     });
+  }
+  // Video trim 
+  {
+    const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
+    const trimControlLabel = leftColumn['trimVideo'].trimControl.label;
+
   }
   // plot views
   {

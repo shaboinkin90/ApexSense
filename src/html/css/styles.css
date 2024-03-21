@@ -438,3 +438,25 @@ header {
   margin-left: 1vh;
   width: 1em;
 }
+
+.video-trim-form-label {
+  margin-top: 0.5rem;
+}
+
+.video-trim-slider {
+  margin-bottom: 2%;
+  margin-top: 2%;
+  width: 95%;
+}
+
+/* inner */
+.noUi-connect {
+  background-color: var(--theme-secondary-color) !important;
+}
+
+/* outer */
+.noUi-connects {
+  background-color: var(--theme-primary-color) !important;
+}
+
+/* */

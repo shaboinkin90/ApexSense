@@ -90,28 +90,20 @@ async function extractProcessingBinary() {
     ext = '.exe';
   }
 
-  // The binary
+  // The python binary
   const binaryPathSrc = path.join('packaging', 'python-binary', 'dist', platform, arch, `garmin_video_processing${ext}`);
   const binaryPathDest = path.join(ROOT_PATH, 'processing', 'garmincatalyst', `garmin_video_processing${ext}`);
 
-  // The template
+  // The template image
   const templateImageSrc = path.join('src', 'processing', 'templates', 'garmin_gforce_template.png');
   const templateImageDest = path.join(ROOT_PATH, 'processing', 'garmincatalyst', 'garmin_gforce_template.png');
 
   const binaryExists = await checkFileExists(binaryPathDest);
   const templateExists = await checkFileExists(templateImageDest);
 
-  log.debug(`\nbinary src: ${binaryPathSrc}\n` +
-    `binary dest: ${binaryPathDest}\n` +
-    `template src: ${templateImageSrc}\n` +
-    `template dest: ${templateImageDest}\n` +
-    `binary exists: ${binaryExists}\n` +
-    `template exists: ${templateExists}`);
-
   if (!binaryExists) {
     // FIXME: error handling, can't run app if these ops fail
     extractFromAsar(binaryPathSrc, binaryPathDest);
-
     if (platform !== 'win32') {
       // set executable
       fs.chmod(binaryPathDest, '0775');
@@ -853,32 +845,33 @@ async function readJsonFile(filePath) {
   }
 }
 
+
 // IMPLEMENT THIS on next version
 /*
 // const { autoUpdater } = require('electron-updater')
 autoUpdater.setFeedURL('https://bork.mork');
 autoUpdater.on('update-available', () => {
-
+ 
 });
-
+ 
 autoUpdater.on('update-downloaded', (event, releaseNotes, releaseName, reelaseDate, updateUrl) => {
   // releaseName windows only
   // autoUpdater.quitAndInstall()
 });
-
+ 
 autoUpdater.on('before-quit-for-update', () => {
-
+ 
 });
-
+ 
 autoUpdater.on('update-not-available', () => {
-
+ 
 });
 autoUpdater.on('error', () => {
-
+ 
 });
-
+ 
 autoUpdater.on('checking-for-update', () => {
-
+ 
 });
 */
 

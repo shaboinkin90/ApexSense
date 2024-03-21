@@ -8,9 +8,11 @@
   <meta charset="UTF-8">
   <title>ApexSense G-Force Visualization</title>
   <link href="../../assets/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="../../thirdparty/nouislider/nouislider.min.css" rel="stylesheet">
   <!--<script src="../../assets/js/color-modes.js"></script>-->
   <script src="../../node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
   <script src="../../node_modules/plotly.js/dist/plotly.min.js"></script>
+  <script src="../../thirdparty/nouislider/nouislider.min.js"></script>
   <script>window.Plotly = Plotly;</script>
 </head>
 
@@ -195,6 +197,7 @@
       <div id="status-toast-container" class="toast-layout">
       </div> <!-- status-toast-container -->
       <div id="landing-view" class="landing-view-layout">
+
         <div class="container" style="height: 100%;">
           <div class="row" style="height: 90%;">
             <div class="align-self-center">
@@ -213,7 +216,8 @@
           </div>
         </div>
       </div> <!-- landing-view -->
-      <div id="main-content" class="rows-container" hidden>
+      <div id="main-content" class="rows-container">
+
       </div> <!-- main-content -->
       <div id="load-trace-view" class="load-trace-view" hidden>
         <div class="load-header-row">

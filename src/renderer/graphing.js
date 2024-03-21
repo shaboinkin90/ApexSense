@@ -32,13 +32,11 @@ class GForcePlot {
     const zVals = this.#rawTrace.map(point => point.z);
 
     const graphData = this.#processTraceData(xVals, yVals, zVals);
-    if (parameters['view'] === '3d') {
-      const mode = {
-        'view': '3d',
-      }
-      this.#graph3d = this.#createPlot(mode, this.#graphDivs.top, graphData, this.#videoPlayer);
-    }
     let mode = {
+      'view': '3d',
+    }
+    this.#graph3d = this.#createPlot(mode, this.#graphDivs.top, graphData, this.#videoPlayer);
+    mode = {
       'view': '2d',
       'type': 'horizontal',
     };
@@ -90,6 +88,26 @@ class GForcePlot {
 
       }
     }
+  }
+
+  trimMode(enable) {
+    if (this.#rawTrace === null) {
+      return
+    }
+    if (this.#currentView === '3d') {
+      this.#graph3d.trimMode(enable);
+    } else {
+      this.#graph2dHorizontal.trimMode(enable);
+      this.#graph2dLateral.trimMode(enable);
+    }
+  }
+
+  drawStartEndPoints(startPoint, endPoint) {
+    this.#graph3d.drawStartEndPoints(startPoint, endPoint);
+  }
+
+  commitTrim() {
+    return this.#graph3d.commitTrim();
   }
 
   viewGraph(view) {
@@ -235,9 +253,17 @@ class PlotStrategy {
     this.mode = mode;
     this.plotlyDiv = plotlyDiv;
     this.graphData = graphData;
+    this.trimmedGraphData = null;
     this.videoPlayer = videoPlayer;
     this.prevTime = 0;
     this.overlaidTraceNames = [];
+    this.trimModeEnable = true;
+    this.trimBounds = {
+      'startFrame': null,
+      'startTime': null,
+      'endFrame': null,
+      'endTime': null,
+    };
   }
 
   createPlotlyGraph(title, fps, syncCallback) {
@@ -250,6 +276,16 @@ class PlotStrategy {
 
   removeOverlaidTraces(specificIndexToRemove) {
     throw new ("extend PlotStrategy and implement removeOverlaidTraces");
+  }
+
+  trimMode(enable) {
+    this.trimMode = enable;
+  }
+  drawStartEndPoints(startPoint, endPoint) {
+    throw new ("Extend PlotStrategy and implement drawStartEndPoints");
+  }
+  commitTrim() {
+    throw new ("extend blah");
   }
 
   changeView(cameraOption) {
@@ -511,10 +547,13 @@ class Plot2DStrategy extends PlotStrategy {
 
 class Plot3DStrategy extends PlotStrategy {
 
-  createPlotlyGraph(title, fps, syncCallback) {
+  #syncCallback = null;
+
+  createPlotlyGraph(title, fps, syncCallback, x, y, z) {
     this.fps = fps;
-    const trace = this.#buildTrace(this.graphData.x, this.graphData.y, this.graphData.z);
-    const marker = this.#buildMarker(this.graphData.x, this.graphData.y, this.graphData.z);
+    this.#syncCallback = syncCallback;
+    const trace = this.#buildTrace((x === undefined) ? this.graphData.x : x, (y === undefined) ? this.graphData.y : y, (z === undefined) ? this.graphData.z : z);
+    const marker = this.#buildMarker((x === undefined) ? this.graphData.x : x, (y === undefined) ? this.graphData.y : y, (z === undefined) ? this.graphData.z : z);
     const layout = this.#buildLayout(title);
     const config = { responsive: true }
 
@@ -531,29 +570,32 @@ class Plot3DStrategy extends PlotStrategy {
     // rather than passing the underlying type directly in here
     this.plotlyDiv.on('plotly_click', (eventData) => {
       debounce(() => {
-        console.log('plotly-click');
         const pointData = eventData.points[0];
         const videoFrame = pointData.z;
         const playbackTime = (videoFrame / fps).toFixed(2);
+        if (this.trimModeEnable) {
+          // keep track of a first click and second click
 
-        console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
 
-        // if the video is playing, pause first because we'll need to wait for seeking to finish before resuming
-        if (!this.videoPlayer.paused) {
-          console.log(`${this.videoPlayer.id} will pause due to plotly_click`);
-          this.videoPlayer.pause();
-          this.videoPlayer.setAttribute('plotly-paused', '');
 
-          // don't set the time until we get the `pause` event.
-          this.videoPlayer.setAttribute('plotly-playback-time', playbackTime);
         } else {
-          console.log(`${this.videoPlayer.id} already paused in plotly_click`);
-          this.videoPlayer.setAttribute('plotly-already-paused', '');
-          // safe to seek
-          this.videoPlayer.currentTime = playbackTime;
+          console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
+
+          // if the video is playing, pause first because we'll need to wait for seeking to finish before resuming
+          if (!this.videoPlayer.paused) {
+            console.log(`${this.videoPlayer.id} will pause due to plotly_click`);
+            this.videoPlayer.pause();
+            this.videoPlayer.setAttribute('plotly-paused', '');
+
+            // don't set the time until we get the `pause` event.
+            this.videoPlayer.setAttribute('plotly-playback-time', playbackTime);
+          } else {
+            console.log(`${this.videoPlayer.id} already paused in plotly_click`);
+            this.videoPlayer.setAttribute('plotly-already-paused', '');
+            // safe to seek
+            this.videoPlayer.currentTime = playbackTime;
+          }
         }
-
-
       }, 100);
     });
 
@@ -561,6 +603,99 @@ class Plot3DStrategy extends PlotStrategy {
     // 'timeupdate' fires about once every 0.3 seconds. This makes the marker move sporadically
     this.videoPlayer.addEventListener('timeupdate', this.#updatePlotMarker);
   }
+
+  drawStartEndPoints(startPoint, endPoint) {
+    const xBounds = [-1, 1];
+    const yBounds = [-1, 1];
+
+    const videoFrameStart = parseFloat(startPoint);
+    const videoFrameEnd = parseFloat(endPoint);
+    this.trimBounds['startFrame'] = videoFrameStart;
+    this.trimBounds['endFrame'] = videoFrameEnd;
+
+    const playbackTimeStart = (videoFrameStart / this.fps).toFixed(2);
+    const playbackTimeEnd = (videoFrameEnd / this.fps).toFixed(2);
+    this.trimBounds['startTime'] = playbackTimeStart;
+    this.trimBounds['endTime'] = playbackTimeEnd;
+
+    let Zstart = Math.floor(videoFrameStart);
+    const startPlane = {
+      x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+      y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+      z: [Zstart, Zstart, Zstart, Zstart],
+      i: [0, 0],
+      j: [1, 2],
+      k: [2, 3],
+      type: 'mesh3d',
+      opacity: 0.3,
+      color: 'rgb(93, 78, 180)',
+      hoverinfo: 'none'
+    };
+
+    const plotData = this.plotlyDiv.data;
+    if (plotData.length == 0) {
+      console.error(`${this.plotlyDiv.id} plotData has no data!`);
+      return;
+    }
+    if (plotData.length == 2) {
+      Plotly.addTraces(this.plotlyDiv, [startPlane]);
+    } else if (plotData.length == 4) {
+      const update = {
+        x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
+        y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
+        z: [[Zstart, Zstart, Zstart, Zstart]],
+        i: [[0, 0]],
+        j: [[1, 2]],
+        k: [[2, 3]],
+      };
+      Plotly.update(this.plotlyDiv, update, {}, [2]);
+    }
+
+    let Zend = videoFrameEnd;
+    let endPlane = {
+      x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+      y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+      z: [Zend, Zend, Zend, Zend],
+      i: [0, 0],
+      j: [1, 2],
+      k: [2, 3],
+      type: 'mesh3d',
+      opacity: 0.3,
+      color: 'rgb(93, 78, 180)',
+      hoverinfo: 'none'
+    };
+    if (plotData.length == 3) {
+      Plotly.addTraces(this.plotlyDiv, [endPlane]);
+
+    } else if (plotData.length == 4) {
+      const update = {
+        x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
+        y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
+        z: [[Zend, Zend, Zend, Zend]],
+        i: [[0, 0]],
+        j: [[1, 2]],
+        k: [[2, 3]],
+      };
+      Plotly.update(this.plotlyDiv, update, {}, [3]);
+    }
+  }
+
+  commitTrim() {
+    const startFrame = this.trimBounds['startFrame'];
+    const endFrame = this.trimBounds['endFrame'];
+    const plotData = this.plotlyDiv.data;
+    const newData = {
+      x: plotData[0].x.slice(startFrame, endFrame),
+      y: plotData[0].y.slice(startFrame, endFrame),
+      z: Array.from({ length: endFrame - startFrame }, (_, i) => i),
+    };
+
+    this.trimmedGraphData = newData;
+
+    this.createPlotlyGraph('title', this.fps, this.#syncCallback, newData.x, newData.y, newData.z);
+    return this.trimBounds;
+  }
+
 
   overlayTraces(newTraceParameters) {
     for (const param of newTraceParameters) {

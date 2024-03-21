@@ -31,7 +31,8 @@ contextBridge.exposeInMainWorld('electron', {
       'file-dialog-complete',
       'import-traces-complete',
       'export-location-complete',
-      'trace-io-complete'];
+      'trace-io-complete',
+    ];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (_event, ...args) => func(...args));
     }

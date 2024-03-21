@@ -257,6 +257,7 @@ function loadTraceCompletion(result) {
   leftColumn['dropZoneContainer'].container.hidden = true;
   leftColumn['videoContainer'].container.hidden = false;
   leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
+  leftColumn['trimVideo'].toggle.div.hidden = false;
 
   if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
     leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
@@ -349,6 +350,8 @@ function syncCameras(originGraph, view, originCamera) {
   });
 }
 
+// callback from GForcePlot start/end trim locations
+
 
 /* IPC */
 function processVideo(videoPath, rowIndex) {
@@ -379,6 +382,29 @@ window.electron.receive('python-complete', (result) => {
         uiElements.gForcePlot.prepareGraphs(params);
         uiElements.gForcePlot.viewGraph('3d');
 
+
+        const sliderMin = 0; // change this to whatever the initial start value is so user cannot progress backwards from the start
+        const sliderMax = jsonData['data'].num_frames;
+        const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
+        noUiSlider.create(slider, {
+          start: [sliderMax * 0.2, sliderMax * 0.8],
+          connect: true,
+          range: {
+            'min': sliderMin,
+            'max': sliderMax,
+          },
+        });
+        //toggleElementVisability(false, [slider]);
+        slider.noUiSlider.on('update', function (values, _handle) {
+          // FIXME: update only the thing that changes, handle == 0, start time, handle == 1, end time
+          uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
+        });
+
+        uiElements['leftColumn'].trimVideo.commitBtn.addEventListener('click', () => {
+          let timeBounds = uiElements.gForcePlot.commitTrim();
+          uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
+        })
+
         uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
         uiElements['rightColumn'].plotly.top.setAttribute('has-data', '');
         uiElements['rightColumn'].plotly.bottom.removeAttribute('has-data');
@@ -390,6 +416,7 @@ window.electron.receive('python-complete', (result) => {
         const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
         const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
         const videoControls = uiElements['leftColumn'].videoControls.container;
+        uiElements['leftColumn'].trimVideo.toggle.div.hidden = false;
         toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
         toggleElementVisability(true, [headerSyncToggles]);
         if (overlayCheckBtn.checked) {
