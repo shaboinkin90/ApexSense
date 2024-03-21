@@ -21,7 +21,7 @@ jobs:
           sw_vers
 
           echo "Brew config:"
-          /opt/homebrew/bin/brew config
+          brew config
 
           echo "npm config:"
           npm version
@@ -30,8 +30,10 @@ jobs:
           python3 -VV
 
           echo "Pyinstaller:"
-          which pyinstaller
           pyinstaller --version
+
+          echo "platypus:"
+          platypus --version
 
       - name: Install Node Modules
         run: npm install
@@ -60,11 +62,16 @@ jobs:
           MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
         run: codesign --sign "$MAC_SIGNING_IDENTITY" --verbose --force --timestamp ./packaging/ApexSense\ Dev\ Mode.app
         
-      - name: Upload ApexSense Dev Mode.app Artifact
+      - name: Zip ApexSense Dev Mode.app
+        run: |
+          cd ./packaging
+          zip -r ApexSense-Dev-Mode.zip ApexSense\ Dev\ Mode.app
+
+      - name: Upload ApexSense Dev Mode Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ApexSense Dev Mode.app
-          path: ./packaging/ApexSense\ Dev\ Mode.app
+          name: ApexSense Dev Mode.zip
+          path: ./packaging/ApexSense\ Dev\ Mode.zip
 
   build-and-upload-windows:
     runs-on: [self-hosted, Windows, X64]
