@@ -160,14 +160,17 @@ jobs:
           asset_name: ApexSense-macOS-ARM64.dmg
           asset_content_type: application/octet-stream
 
+      - name: Zip ApexSense Dev Mode.app
+        run: zip -r ${{ github.workspace }}/packaging/ApexSense-Dev-Mode.zip ${{ github.workspace }}/packaging/ApexSense\ Dev\ Mode.app
+      
       - name: Upload ApexSense Dev Mode Release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release-step.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/packaging/ApexSense\ Dev\ Mode.app
-          asset_name: ApexSense Dev Mode.app
+          asset_path: ${{ github.workspace }}/packaging/ApexSense-Dev-Mode.zip
+          asset_name: ApexSense-Dev-Mode.zip
           asset_content_type: application/octet-stream
 
       - name: Upload Windows Release
