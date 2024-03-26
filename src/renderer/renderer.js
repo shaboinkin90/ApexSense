@@ -63,7 +63,7 @@ const plusBtn = document.getElementById('plus-button').addEventListener('click',
   addRow();
 });
 
-// Sync views 
+// Sync graph views 
 let shouldSyncViews = false;
 let shouldSyncVideos = false;
 
@@ -80,7 +80,7 @@ syncVideoPlaybackCheckBtn.addEventListener('click', () => {
   shouldSyncVideos = !shouldSyncVideos;
 });
 
-// overlay graphs
+// Overlay graphs
 const overlayCheckBtn = document.getElementById('overlay-traces-checkbox');
 overlayCheckBtn.addEventListener('click', () => {
   if (overlayCheckBtn.checked) {
@@ -92,8 +92,6 @@ overlayCheckBtn.addEventListener('click', () => {
 
 function addOverlayTraces(rowMap) {
   rowMap.forEach((row, index) => {
-
-    console.log(`Adding overlay to row-${index}`);
     let tracesToApply = [];
 
     rowUIElementMap.forEach((rowIter, indexIter) => {
@@ -115,8 +113,7 @@ function addOverlayTraces(rowMap) {
 
 // Remove all overlaid traces
 function removeOverlayTraces(rowMap) {
-  rowMap.forEach((row, index) => {
-    console.log(`Remove overlay from ${index}`);
+  rowMap.forEach((row, _index) => {
     row['gForcePlot'].removeOverlaidTraces();
   });
 }
@@ -362,79 +359,139 @@ function processVideo(videoPath, rowIndex) {
   }
 }
 
-window.electron.receive('python-complete', (result) => {
-  const status = result['status']
-  if (status === 'ok') {
-    const uiElements = rowUIElementMap.get(result['index']);
-    if (uiElements) {
-      uiElements['rightColumn'].loadingSpinner.hidden = true;
-      uiElements['rightColumn'].plotly.top.hidden = false;
-      uiElements['rightColumn'].plotly.bottom.hidden = true;
-
-      try {
-        const jsonData = JSON.parse(result['data']);
-        const params = {
-          'view': '3d',
-          'trace': jsonData,
-          'title': null,
-        };
-
-        uiElements.gForcePlot.prepareGraphs(params);
-        uiElements.gForcePlot.viewGraph('3d');
-
-
-        const sliderMin = 0; // change this to whatever the initial start value is so user cannot progress backwards from the start
-        const sliderMax = jsonData['data'].num_frames;
-        const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
-        noUiSlider.create(slider, {
-          start: [sliderMax * 0.2, sliderMax * 0.8],
-          connect: true,
-          range: {
-            'min': sliderMin,
-            'max': sliderMax,
-          },
-        });
-        //toggleElementVisability(false, [slider]);
-        slider.noUiSlider.on('update', function (values, _handle) {
-          // FIXME: update only the thing that changes, handle == 0, start time, handle == 1, end time
-          uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
-        });
-
-        uiElements['leftColumn'].trimVideo.commitBtn.addEventListener('click', () => {
-          let timeBounds = uiElements.gForcePlot.commitTrim();
-          uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
-        })
-
-        uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
-        uiElements['rightColumn'].plotly.top.setAttribute('has-data', '');
-        uiElements['rightColumn'].plotly.bottom.removeAttribute('has-data');
-        uiElements['rawDataStash'] = {
-          'data': jsonData['data'],
-          'title': null,
-          'videoPath': uiElements['dataFilePaths'].videoPath,
-        };
-        const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
-        const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
-        const videoControls = uiElements['leftColumn'].videoControls.container;
-        uiElements['leftColumn'].trimVideo.toggle.div.hidden = false;
-        toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
-        toggleElementVisability(true, [headerSyncToggles]);
-        if (overlayCheckBtn.checked) {
-          addOverlayTraces(rowUIElementMap);
-        }
-      } catch (error) {
-        console.error(`Could not parse the output data ${error}`);
-        showToast('There was a problem with generating the graph', false);
-      }
+// split up
+// - get UI entry 
+// - get graph data
+// - setup UI
+function setupRowForGraph(result) {
+  const uiElements = rowUIElementMap.get(result['index']);
+  if (!uiElements) {
+    console.error(`No UI entry for ${index}?`);
+    for (const [key, value] of rowUIElementMap.entries()) {
+      console.error(key, value);
     }
-  } else if (status === 'unsupported-type') {
-    showToast('Unsupported operation', false);
-  } else if (status === 'no-python-found') {
-    showToast('Python was not detected on the system', false);
-  } else if (status === 'python-runtime-error') {
-    showToast('There was a problem processing the video', false);
+    showToast('There was a problem displaying this trace', false);
+    return;
+  }
+
+  const title = ('title' in result['data']) ? result['data'].title : null;
+  // Cache for overlay option
+  if (result['type'] === 'read') {
+    // FIXME: standardize the dictionary
+    // new trace / load trace has different result structures
+    uiElements['rawDataStash'] = result['trace'];
   } else {
-    console.error(`Unknown error in python-complete: ${status}`);
+    uiElements['rawDataStash'] = {
+      'data': result['data'],
+      'title': title,
+      'videoPath': uiElements['dataFilePaths'].videoPath,
+    };
+  }
+  const leftColumn = uiElements['leftColumn'];
+  const rightColumn = uiElements['rightColumn'];
+  const gForcePlot = uiElements['gForcePlot'];
+
+  const graphParams = {
+    'view': '3d',
+    'fps': result['data'].fps,
+    'trace': result['data'].trace,
+    'title': title,
+  };
+  gForcePlot.prepareGraphs(graphParams);
+  gForcePlot.viewGraph('3d');
+
+  if (result['type'] === 'read') {
+    loadView.hidden = true;
+    document.getElementById('main-content').hidden = false;
+
+    // loading a trace requires setting the video player up
+    // processing a new video does this before processing starts
+    leftColumn['dropZoneContainer'].container.hidden = true;
+    leftColumn['videoContainer'].container.hidden = false;
+    leftColumn['videoContainer'].videoPlayer.src = result['data'].videoPath;
+  }
+
+  // toggle UI visibility
+  const viewBtnGroup = leftColumn['viewToggleButtons'].buttonGroup;
+  leftColumn['viewToggleButtons'].v3d.checked = true;
+  leftColumn['viewToggleButtons'].v2d.checked = false;
+
+  const saveBtn = leftColumn['crudButtons'].saveBtn;
+  const videoControls = leftColumn['videoControls'].container;
+  toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls, headerSyncToggles]);
+
+  if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
+    leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
+  }
+
+  rightColumn['loadingSpinner'].hidden = true;
+  rightColumn['plotly'].top.hidden = false;
+  rightColumn['plotly'].bottom.hidden = true;
+
+  uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
+  rightColumn['plotly'].top.setAttribute('has-data', '');
+  rightColumn['plotly'].bottom.removeAttribute('has-data');
+
+  if (overlayCheckBtn.checked) {
+    removeOverlayTraces(rowUIElementMap);
+    addOverlayTraces(rowUIElementMap);
+  }
+
+  // trim video toggle - UI not finalized
+  leftColumn['trimVideo'].toggle.div.hidden = false;
+  const sliderMin = 0;
+  const sliderMax = result['data'].numFrames;
+  const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
+  if (slider.noUiSlider) {
+    slider.noUiSlider.destroy();
+    leftColumn['trimVideo'].toggle.input.checked = false;
+    leftColumn['trimVideo'].trimControl.label.hidden = true;
+
+  }
+  noUiSlider.create(slider, {
+    start: [sliderMax * 0.2, sliderMax * 0.8],
+    connect: true,
+    range: {
+      'min': sliderMin,
+      'max': sliderMax,
+    },
+  });
+  slider.hidden = false;
+  toggleElementVisability(false, [slider]);
+  slider.noUiSlider.on('update', function (values, _handle) {
+    console.log('slider update');
+    // FIXME: update only the thing that changes, handle == 0, start time, handle == 1, end time
+    uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
+  });
+
+  leftColumn['trimVideo'].commitBtn.addEventListener('click', () => {
+    let timeBounds = uiElements.gForcePlot.commitTrim();
+    uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
+  });
+  adjustPlotlyGraph();
+}
+
+window.electron.receive('python-complete', (result) => {
+  const status = result['status'];
+  switch (status) {
+    case 'ok':
+      setupRowForGraph(result);
+      break;
+    case 'unsupported-type':
+      showToast('Unsupported operation', false);
+      break;
+    case 'no-python-found':
+      showToast('Python was not detected on the system', false);
+      break;
+    case 'python-runtime-error':
+      showToast('There was a problem processing the video', false);
+      break;
+    case 'invalid-result-data':
+      showToast('There was a problem reading the processed results', false);
+      break;
+    default:
+      console.error(`Unknown error in python-complete: ${status}`);
+      break;
   }
 });
 
@@ -518,7 +575,7 @@ window.electron.receive('trace-io-complete', (result) => {
       importTraceCompletion(result);
       break;
     case 'read':
-      loadTraceCompletion(result);
+      setupRowForGraph(result);
       break;
     case 'readall':
       if ('overlay' in result) {

@@ -122,16 +122,20 @@ function buildRow(rootDiv, rowIndex) {
 
 function buildLeftColumn(rowIndex) {
   const leftColumn = document.createElement('div');
-  leftColumn.className = 'left-column';
+  leftColumn.classList.add('left-column');
 
   // crud buttons
   const buttonsRow = document.createElement('div');
-  buttonsRow.className = 'buttons-row';
+  buttonsRow.classList.add('buttons-row');
 
   function createButton(href, btnClass, dataBsLabel, xlinkHref) {
     const a = document.createElement('a');
     a.href = href;
-    a.className = `btn ${btnClass} m-1`;
+    a.classList.add('btn', 'm-1');
+    if (btnClass !== null) {
+      a.classList.add(btnClass);
+    }
+
     if (dataBsLabel !== null) {
       a.setAttribute('data-bs-toggle', 'tooltip');
       a.setAttribute('data-bs-placement', 'bottom');
@@ -158,32 +162,32 @@ function buildLeftColumn(rowIndex) {
   const loadBtn = createButton('#', 'btn-secondary', 'Load', '#load');
 
   const dividerLeft = document.createElement('div');
-  dividerLeft.className = 'vertical-divider';
+  dividerLeft.classList.add('vertical-divider');
 
   const viewButtonGroup = document.createElement('div');
-  viewButtonGroup.className = 'btn-group apex-graph-view-buttons';
+  viewButtonGroup.classList.add('btn-group', 'apex-graph-view-buttons');
   viewButtonGroup.setAttribute('role', 'group');
 
   const input3D = document.createElement('input');
   input3D.type = 'radio';
-  input3D.className = 'btn-check';
+  input3D.classList.add('btn-check');
   input3D.name = `btn-view-${rowIndex}`;
   input3D.id = `btn-view-3d-${rowIndex}`;
   input3D.checked = true;
 
   const label3D = document.createElement('label');
-  label3D.className = 'btn btn-outline-light';
+  label3D.classList.add('btn', 'btn-outline-light');
   label3D.setAttribute('for', input3D.id);
   label3D.textContent = '3D';
 
   const input2D = document.createElement('input');
   input2D.type = 'radio';
-  input2D.className = 'btn-check';
+  input2D.classList.add('btn-check');
   input2D.name = `btn-view-${rowIndex}`;
   input2D.id = `btn-view-2d-${rowIndex}`;
 
   const label2D = document.createElement('label');
-  label2D.className = 'btn btn-outline-light';
+  label2D.classList.add('btn', 'btn-outline-light');
   label2D.setAttribute('for', input2D.id);
   label2D.textContent = '2D';
 
@@ -198,9 +202,9 @@ function buildLeftColumn(rowIndex) {
   const videoControls = document.createElement('div');
   videoControls.className = 'video-controls';
 
-  const playPauseButton = createButton('#', '', null, '#play');
-  const stopButton = createButton('#', '', null, '#stop');
-  const audioButton = createButton('#', '', null, '#audio-off');
+  const playPauseButton = createButton('#', null, null, '#play');
+  const stopButton = createButton('#', null, null, '#stop');
+  const audioButton = createButton('#', null, null, '#audio-off');
 
   videoControls.appendChild(playPauseButton);
   videoControls.appendChild(stopButton);
@@ -216,17 +220,17 @@ function buildLeftColumn(rowIndex) {
 
   // Drop zone container
   const dropZoneContainer = document.createElement('div');
-  dropZoneContainer.className = 'drop-zone-container';
+  dropZoneContainer.classList.add('drop-zone-container');
 
   const dropZone = document.createElement('div');
-  dropZone.className = 'drop-zone';
+  dropZone.classList.add('drop-zone');
   dropZone.setAttribute('type', 'file');
   dropZone.setAttribute('accept', '.mp4');
   dropZone.textContent = 'Drag and drop Garmin Catalyst video here';
 
   const selectVideoButton = document.createElement('button');
   selectVideoButton.type = 'button';
-  selectVideoButton.className = 'btn btn-light';
+  selectVideoButton.classList.add('btn', 'btn-light');
   selectVideoButton.textContent = 'Select video';
 
   dropZone.appendChild(selectVideoButton);
@@ -234,41 +238,44 @@ function buildLeftColumn(rowIndex) {
 
   // Video container
   const videoContainer = document.createElement('div');
-  videoContainer.className = 'video-container';
+  videoContainer.classList.add('video-container');
   videoContainer.hidden = true;
 
   const videoPlayer = document.createElement('video');
-  videoPlayer.className = 'video-player';
+  videoPlayer.classList.add('video-player');
   videoPlayer.id = `video-${rowIndex}`;
   videoPlayer.controls = false;
 
-
   // FIXME: Don't like the layout - keep for now to exercise code paths
+  const trimCommitDiv = document.createElement('div');
+  trimCommitDiv.classList.add('d-flex', 'col');
+
   const trimRangeLabel = document.createElement('label');
   trimRangeLabel.id = 'video-trim-label';
-  trimRangeLabel.className = 'form-label video-trim-form-label';
-  trimRangeLabel.textContent = 'Drag slider to where you want to start trimming the video';
+  trimRangeLabel.classList.add('form-label', 'video-trim-form-label');
+  trimRangeLabel.textContent = 'Drag the sliders to trim the plot';
   trimRangeLabel.setAttribute('for', 'video-trim-range');
   trimRangeLabel.hidden = true;
 
+  const commitTrimBtn = document.createElement('button');
+  commitTrimBtn.classList.add('btn', 'btn-light');
+  commitTrimBtn.textContent = 'Trim';
+
+  trimCommitDiv.appendChild(trimRangeLabel);
+  trimCommitDiv.appendChild(commitTrimBtn);
 
   const trimRangeSlider = document.createElement('div');
   trimRangeSlider.id = `trim-${rowIndex}`;
-  trimRangeSlider.className = 'video-trim-slider';
+  trimRangeSlider.classList.add('video-trim-slider');
 
   const toggleRow = document.createElement('div');
-  toggleRow.className = 'd-flex row';
-  toggleRow.style = 'width:100%';
-
-  const commitTrimBtn = document.createElement('button');
-  commitTrimBtn.className = 'btn btn-light';
-  commitTrimBtn.textContent = 'Commit';
+  toggleRow.classList.add('d-flex', 'row');
 
   const trimVideoTogglediv = document.createElement('div');
-  trimVideoTogglediv.className = 'form-check form-switch';
+  trimVideoTogglediv.classList.add('form-check', 'form-switch');
 
   const trimToggleInput = document.createElement('input');
-  trimToggleInput.className = 'form-check-input';
+  trimToggleInput.classList.add('form-check-input');
   trimToggleInput.type = 'checkbox';
   trimToggleInput.role = 'switch';
   trimToggleInput.id = 'trim-video-toggle';
@@ -279,7 +286,7 @@ function buildLeftColumn(rowIndex) {
   trimToggleInput.setAttribute('data-bs-placement', 'bottom');
 
   const trimToggleLabel = document.createElement('label');
-  trimToggleLabel.className = 'form-check-label';
+  trimToggleLabel.classList.add('form-check-label');
   trimToggleLabel.setAttribute('for', 'trim-video-toggle');
   trimToggleLabel.textContent = 'Trim video mode';
 
@@ -287,7 +294,6 @@ function buildLeftColumn(rowIndex) {
   trimVideoTogglediv.appendChild(trimToggleInput);
   trimVideoTogglediv.appendChild(trimToggleLabel);
   toggleRow.appendChild(trimVideoTogglediv);
-  toggleRow.appendChild(commitTrimBtn);
 
   trimVideoTogglediv.hidden = true;
 
@@ -296,8 +302,8 @@ function buildLeftColumn(rowIndex) {
   leftColumn.appendChild(buttonsRow);
   leftColumn.appendChild(dropZoneContainer);
   leftColumn.appendChild(videoContainer);
-  leftColumn.appendChild(trimRangeLabel);
-  leftColumn.appendChild(commitTrimBtn);
+  leftColumn.appendChild(trimCommitDiv);
+  //leftColumn.appendChild(commitTrimBtn);
   leftColumn.appendChild(trimRangeSlider);
   leftColumn.appendChild(toggleRow);
 
@@ -467,6 +473,14 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       leftColumn['viewToggleButtons'].v3d.checked = true;
       leftColumn['viewToggleButtons'].v2d.checked = false;
       leftColumn['trimVideo'].toggle.div.hidden = true;
+      leftColumn['trimVideo'].toggle.input.checked = false;
+      leftColumn['trimVideo'].trimControl.label.hidden = true;
+      const slider = leftColumn['trimVideo'].trimControl.slider;
+      if (slider.noUiSlider) {
+        slider.noUiSlider.destroy();
+        slider.hidden = true;
+
+      }
 
       const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
       const videoControls = leftColumn['videoControls'].container;
@@ -927,8 +941,23 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
   // Video trim 
   {
     const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
-    const trimControlLabel = leftColumn['trimVideo'].trimControl.label;
-
+    trimToggleSwitch.addEventListener('click', () => {
+      const trimControlLabel = leftColumn['trimVideo'].trimControl.label;
+      const slider = leftColumn['trimVideo'].trimControl.slider;
+      if (trimToggleSwitch.checked) {
+        toggleElementVisability(true, [slider]);
+        trimControlLabel.hidden = false;
+        gForcePlot.setCameraPosition('Iso');
+        gForcePlot.trimMode(true);
+        const values = slider.noUiSlider.get();
+        gForcePlot.drawStartEndPoints(values[0], values[1]);
+      } else {
+        toggleElementVisability(false, [slider]);
+        trimControlLabel.hidden = true;
+        gForcePlot.trimMode(false);
+        gForcePlot.removeTrimPoints();
+      }
+    });
   }
   // plot views
   {

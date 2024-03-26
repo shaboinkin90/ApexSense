@@ -186,7 +186,7 @@ def jsonify_results(num_frames, fps, frame_data):
 
     processing_response = {
         'data': {
-            'num_frames': num_frames,
+            'numFrames': num_frames,
             'fps': fps,
             'trace': json_results,
         },

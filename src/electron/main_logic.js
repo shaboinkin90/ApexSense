@@ -166,6 +166,7 @@ async function runPythonScript(args, callback) {
     UNSUPPORTED_TYPE: 'unsupported-type',
     NO_PYTHON_FOUND: 'no-python-found',
     PYTHON_RUNTIME_ERROR: 'python-runtime-error',
+    INVALID_RESULT_DATA: 'invalid-result-data',
   });
 
   const type = args[0];
@@ -180,7 +181,7 @@ async function runPythonScript(args, callback) {
     return;
   }
 
-  let outputPath = path.join(ROOT_PATH, 'temp');
+  const outputPath = path.join(ROOT_PATH, 'temp');
   let process = null;
 
   if (app.isPackaged) {
@@ -204,6 +205,7 @@ async function runPythonScript(args, callback) {
       ]
     );
   } else {
+    // Use python directly when running from the source
     const pythonPath = await getPythonPath();
     if (pythonPath === null) {
       callback({
@@ -216,7 +218,6 @@ async function runPythonScript(args, callback) {
     const pythonScriptPath = path.join('src', 'processing', 'garmin_video_processing.py');
     const templatePath = path.join('src', 'processing', 'templates', 'garmin_gforce_template.png');
 
-    // Use python when running from the source
     log.debug(`Running python script: ${pythonPath} -u ${pythonScriptPath} --data_source ${type} ` +
       `--data_file_path ${videoPath} --template_path ${templatePath} --output_path ${outputPath}`);
 
@@ -256,13 +257,19 @@ async function runPythonScript(args, callback) {
     await checkFileExists(resultsJsonPath)
       .then(async (exists) => {
         if (exists) {
-          const fileContents = await fs.readFile(resultsJsonPath, 'utf8');
-          callback({
-            'status': PythonStatus.OK,
-            'data': fileContents,
-            'jsonPath': resultsJsonPath,
-            'index': index,
-          });
+          const data = await readJsonFile(resultsJsonPath);
+          if (data === null) {
+            callback({
+              'status': PythonStatus.PYTHON_RUNTIME_ERROR,
+              'index': index,
+            });
+          } else {
+            const title = null;
+            const videoPath = null;
+            const response = formTraceResultResponse('process', PythonStatus.OK, index,
+              resultsJsonPath, videoPath, title, data['data'].numFrames, data['data'].fps, data['data'].trace);
+            callback(response);
+          }
         } else {
           log.error(`${resultsJsonPath} does not exist!`);
           callback({
@@ -647,17 +654,16 @@ async function readTrace(request) {
   if (json === null) {
     return {
       'status': ReadResponse.ERROR,
-      'index': request['index'],
-      'error': error
+      'index': request['index']
     };
   }
+  // change `num_traces` to `numTraces` to standardize the naming convention
+  updatePropertyName(json['data'], 'num_frames', 'numFrames');
 
-  return {
-    'status': ReadResponse.OK,
-    'trace': json,
-    'index': request['index'],
-    'videoPath': request['videoPath']
-  };
+  const response = formTraceResultResponse('read', ReadResponse.OK, request['index'],
+    request['tracePath'], request['videoPath'], json['title'], json['data'].numFrames, json['data'].fps, json['data'].trace);
+
+  return response;
 }
 
 /* readall */
@@ -845,8 +851,40 @@ async function readJsonFile(filePath) {
   }
 }
 
+function updatePropertyName(data, oldProp, newProp) {
+  if (data.hasOwnProperty(oldProp)) {
+    data[newProp] = data[oldProp];
+    delete data[oldProp];
+  }
+}
 
-// IMPLEMENT THIS on next version
+function formTraceResultResponse(type, status, index, tracePath, videoPath, title, numFrames, fps, traceArray) {
+  function addIfNotNull(dict, key, value) {
+    if (value !== null) {
+      dict[key] = value;
+    }
+  }
+
+  const response = {
+    'type': type,
+    'status': status,
+    'index': index,
+    'data': {
+      'fps': fps,
+      'numFrames': numFrames,
+      'trace': traceArray,
+    },
+  }
+
+  addIfNotNull(response['data'], 'videoPath', videoPath);
+  addIfNotNull(response['data'], 'jsonPath', tracePath);
+  addIfNotNull(response['data'], 'title', title);
+
+  return response;
+}
+
+
+// IMPLEMENT THIS on next major version
 /*
 // const { autoUpdater } = require('electron-updater')
 autoUpdater.setFeedURL('https://bork.mork');

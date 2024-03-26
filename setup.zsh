@@ -9,11 +9,6 @@
 #   in terminal commands. This is an attempt at streamlining that process.
 #   Platypus is used to to package up the script into an .app bundle
 
-
-
-
-# Extract the tag_name from the JSON response, which is the version number
-
 apexsense_version=""
 apexsense_output=""
 

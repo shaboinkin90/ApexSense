@@ -20,10 +20,10 @@ class GForcePlot {
   }
 
   prepareGraphs(parameters) {
-    this.#fps = parameters['trace'].data.fps;
-    this.#rawTrace = parameters['trace'].data.trace;
+    this.#fps = parameters['fps'];
+    this.#rawTrace = parameters['trace'];
 
-    if ('title' in parameters) {
+    if (parameters['title'] !== null) {
       this.#title = parameters['title'];
     }
 
@@ -104,6 +104,10 @@ class GForcePlot {
 
   drawStartEndPoints(startPoint, endPoint) {
     this.#graph3d.drawStartEndPoints(startPoint, endPoint);
+  }
+
+  removeTrimPoints() {
+    this.#graph3d.removeTrimPoints();
   }
 
   commitTrim() {
@@ -257,7 +261,7 @@ class PlotStrategy {
     this.videoPlayer = videoPlayer;
     this.prevTime = 0;
     this.overlaidTraceNames = [];
-    this.trimModeEnable = true;
+    this.trimModeEnable = false;
     this.trimBounds = {
       'startFrame': null,
       'startTime': null,
@@ -279,11 +283,17 @@ class PlotStrategy {
   }
 
   trimMode(enable) {
-    this.trimMode = enable;
+    this.trimModeEnable = enable;
   }
+
   drawStartEndPoints(startPoint, endPoint) {
     throw new ("Extend PlotStrategy and implement drawStartEndPoints");
   }
+
+  removeTrimPoints() {
+    throw new ("Extend PlotStrategy and implement removeTrimPoints");
+  }
+
   commitTrim() {
     throw new ("extend blah");
   }
@@ -576,8 +586,6 @@ class Plot3DStrategy extends PlotStrategy {
         if (this.trimModeEnable) {
           // keep track of a first click and second click
 
-
-
         } else {
           console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
 
@@ -605,41 +613,35 @@ class Plot3DStrategy extends PlotStrategy {
   }
 
   drawStartEndPoints(startPoint, endPoint) {
+    if (!this.trimModeEnable) {
+      return;
+    }
+
     const xBounds = [-1, 1];
     const yBounds = [-1, 1];
 
-    const videoFrameStart = parseFloat(startPoint);
-    const videoFrameEnd = parseFloat(endPoint);
-    this.trimBounds['startFrame'] = videoFrameStart;
-    this.trimBounds['endFrame'] = videoFrameEnd;
-
+    const videoFrameStart = Math.floor(parseFloat(startPoint)); // can't have part of a frame
+    const videoFrameEnd = Math.ceil(parseFloat(endPoint));
     const playbackTimeStart = (videoFrameStart / this.fps).toFixed(2);
     const playbackTimeEnd = (videoFrameEnd / this.fps).toFixed(2);
-    this.trimBounds['startTime'] = playbackTimeStart;
-    this.trimBounds['endTime'] = playbackTimeEnd;
 
-    let Zstart = Math.floor(videoFrameStart);
-    const startPlane = {
-      x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
-      y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
-      z: [Zstart, Zstart, Zstart, Zstart],
-      i: [0, 0],
-      j: [1, 2],
-      k: [2, 3],
-      type: 'mesh3d',
-      opacity: 0.3,
-      color: 'rgb(93, 78, 180)',
-      hoverinfo: 'none'
-    };
-
+    const Zstart = Math.floor(videoFrameStart);
     const plotData = this.plotlyDiv.data;
-    if (plotData.length == 0) {
-      console.error(`${this.plotlyDiv.id} plotData has no data!`);
-      return;
-    }
     if (plotData.length == 2) {
+      const startPlane = {
+        x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+        y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+        z: [Zstart, Zstart, Zstart, Zstart],
+        i: [0, 0],
+        j: [1, 2],
+        k: [2, 3],
+        type: 'mesh3d',
+        opacity: 0.3,
+        color: 'rgb(93, 78, 180)',
+        hoverinfo: 'none'
+      };
       Plotly.addTraces(this.plotlyDiv, [startPlane]);
-    } else if (plotData.length == 4) {
+    } else if (plotData.length === 4 && this.trimBounds['startFrame'] !== Zstart) {
       const update = {
         x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
         y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
@@ -651,33 +653,55 @@ class Plot3DStrategy extends PlotStrategy {
       Plotly.update(this.plotlyDiv, update, {}, [2]);
     }
 
-    let Zend = videoFrameEnd;
-    let endPlane = {
-      x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
-      y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
-      z: [Zend, Zend, Zend, Zend],
-      i: [0, 0],
-      j: [1, 2],
-      k: [2, 3],
-      type: 'mesh3d',
-      opacity: 0.3,
-      color: 'rgb(93, 78, 180)',
-      hoverinfo: 'none'
-    };
-    if (plotData.length == 3) {
-      Plotly.addTraces(this.plotlyDiv, [endPlane]);
+    const Zend = videoFrameEnd;
 
-    } else if (plotData.length == 4) {
-      const update = {
-        x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
-        y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
-        z: [[Zend, Zend, Zend, Zend]],
-        i: [[0, 0]],
-        j: [[1, 2]],
-        k: [[2, 3]],
+    if (plotData.length == 3) {
+      const endPlane = {
+        x: [xBounds[0], xBounds[1], xBounds[1], xBounds[0]],
+        y: [yBounds[0], yBounds[0], yBounds[1], yBounds[1]],
+        z: [Zend, Zend, Zend, Zend],
+        i: [0, 0],
+        j: [1, 2],
+        k: [2, 3],
+        type: 'mesh3d',
+        opacity: 0.3,
+        color: 'rgb(93, 78, 180)',
+        hoverinfo: 'none'
       };
-      Plotly.update(this.plotlyDiv, update, {}, [3]);
+      Plotly.addTraces(this.plotlyDiv, [endPlane]);
+    } else if (plotData.length == 4) {
+      if (this.trimBounds['endFrame'] !== Zend) {
+        const update = {
+          x: [[xBounds[0], xBounds[1], xBounds[1], xBounds[0]]],
+          y: [[yBounds[0], yBounds[0], yBounds[1], yBounds[1]]],
+          z: [[Zend, Zend, Zend, Zend]],
+          i: [[0, 0]],
+          j: [[1, 2]],
+          k: [[2, 3]],
+        };
+        Plotly.update(this.plotlyDiv, update, {}, [3]);
+      }
     }
+
+    this.trimBounds['startFrame'] = videoFrameStart;
+    this.trimBounds['endFrame'] = videoFrameEnd;
+    this.trimBounds['startTime'] = playbackTimeStart;
+    this.trimBounds['endTime'] = playbackTimeEnd;
+  }
+
+  removeTrimPoints() {
+    const plotData = this.plotlyDiv.data;
+    if (plotData.length == 0) {
+      console.error(`${this.plotlyDiv.id} plotData has no data!`);
+      return;
+    }
+
+    if (plotData.length == 2) {
+      // nothing to do
+      return;
+    }
+    // otherwise, remove the meshes
+    Plotly.deleteTraces(this.plotlyDiv, [2, 3]);
   }
 
   commitTrim() {
@@ -892,17 +916,17 @@ class Plot3DStrategy extends PlotStrategy {
         return {
           'scene.camera': {
             eye: {
-              x: -2.5,
-              y: 1.5,
-              z: -5,
+              x: -2.30,
+              y: 1.35,
+              z: -4.6,
             },
             center: {
-              x: 0,
-              y: 0,
-              z: 0,
+              x: 0.75,
+              y: -0.40,
+              z: -0.50,
             },
             up: {
-              x: 0.15,
+              x: 0.25,
               y: 1,
               z: 0.20,
             },

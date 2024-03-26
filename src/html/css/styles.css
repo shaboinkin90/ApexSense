@@ -449,14 +449,12 @@ header {
   width: 95%;
 }
 
-/* inner */
+/* inner video trim slider */
 .noUi-connect {
   background-color: var(--theme-secondary-color) !important;
 }
 
-/* outer */
+/* outer video trim slider */
 .noUi-connects {
   background-color: var(--theme-primary-color) !important;
 }
-
-/* */

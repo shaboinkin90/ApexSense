@@ -67,7 +67,7 @@ ipcMain.on('export-location-dialog-prompt', (_e, request) => {
 
     mainWindow.webContents.send('export-location-complete', result);
   });
-})
+});
 
 ipcMain.on('trace-file-io', async (_e, request) => {
   let result = {
