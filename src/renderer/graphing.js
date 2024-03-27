@@ -257,7 +257,6 @@ class PlotStrategy {
     this.mode = mode;
     this.plotlyDiv = plotlyDiv;
     this.graphData = graphData;
-    this.trimmedGraphData = null;
     this.videoPlayer = videoPlayer;
     this.prevTime = 0;
     this.overlaidTraceNames = [];
@@ -268,6 +267,7 @@ class PlotStrategy {
       'endFrame': null,
       'endTime': null,
     };
+    this.trimmedGraphData = null;
   }
 
   createPlotlyGraph(title, fps, syncCallback) {
@@ -307,7 +307,12 @@ class PlotStrategy {
   }
 
   clear() {
-    throw new ("Extend PlotStrategy and implement clear");
+    this.prevTime = 0;
+    this.overlaidTraceNames.length = 0;
+    this.trimmedGraphData = null;
+    for (const key in this.trimBounds) {
+      this.trimBounds[key] = null;
+    }
   }
 
   #buildLayout() {
@@ -784,11 +789,10 @@ class Plot3DStrategy extends PlotStrategy {
   }
 
   clear() {
+    super.clear();
     Plotly.purge(this.plotlyDiv);
     this.plotlyDiv.removeAttribute('has-data');
-    this.prevTime = 0;
     this.videoPlayer.removeEventListener('timeupdate', this.#updatePlotMarker);
-    this.overlaidTraceNames.length = 0;
   }
 
   #updatePlotMarker = () => {
@@ -808,8 +812,26 @@ class Plot3DStrategy extends PlotStrategy {
       return;
     }
 
-    const frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
+    /*
+    I pick start and end points for from
+    i have starting frame number and ending frame number
+    i change the time on the video to match the starting frame time
+    startTime + trimStartTime = deltaStart
+    
+    // marker location is based on video start time
+    video does not have concept of trim'd times. +5 seconds trimStartTime means take currentTime - trimStartTime 
+    */
+    let frameNumber = 0;
+    if (this.trimmedGraphData !== null) {
+      this.trimBounds['startFrame']
+      frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
+
+    } else {
+      frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
+    }
+
     if (frameNumber < 0 || frameNumber >= plotData[0].z.length) {
+      console.error(`Invalid frameNumber ${frameNumber} when updating marker position`);
       return;
     }
 

@@ -449,6 +449,10 @@ header {
   width: 95%;
 }
 
+.trim-btns {
+  margin: 5px
+}
+
 /* inner video trim slider */
 .noUi-connect {
   background-color: var(--theme-secondary-color) !important;

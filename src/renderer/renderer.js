@@ -347,9 +347,6 @@ function syncCameras(originGraph, view, originCamera) {
   });
 }
 
-// callback from GForcePlot start/end trim locations
-
-
 /* IPC */
 function processVideo(videoPath, rowIndex) {
   const uiElements = rowUIElementMap.get(rowIndex);
@@ -438,36 +435,69 @@ function setupRowForGraph(result) {
   }
 
   // trim video toggle - UI not finalized
-  leftColumn['trimVideo'].toggle.div.hidden = false;
   const sliderMin = 0;
   const sliderMax = result['data'].numFrames;
   const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
-  if (slider.noUiSlider) {
-    slider.noUiSlider.destroy();
-    leftColumn['trimVideo'].toggle.input.checked = false;
-    leftColumn['trimVideo'].trimControl.label.hidden = true;
 
-  }
-  noUiSlider.create(slider, {
+  slider.noUiSlider.updateOptions({
     start: [sliderMax * 0.2, sliderMax * 0.8],
-    connect: true,
     range: {
       'min': sliderMin,
       'max': sliderMax,
     },
   });
-  slider.hidden = false;
+
+  leftColumn['trimVideo'].toggle.input.checked = false;
+  toggleElementVisability(true, [leftColumn['trimVideo'].toggle.input, leftColumn['trimVideo'].toggle.label]);
+
   toggleElementVisability(false, [slider]);
   slider.noUiSlider.on('update', function (values, _handle) {
-    console.log('slider update');
-    // FIXME: update only the thing that changes, handle == 0, start time, handle == 1, end time
     uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
   });
 
-  leftColumn['trimVideo'].commitBtn.addEventListener('click', () => {
+  // FIXME: move to event listener function
+  leftColumn['trimVideo'].trimControl.trimBtn.addEventListener('click', () => {
+    const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
+    const trimBtn = leftColumn['trimVideo'].trimControl.trimBtn;
+    const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
+    trimBackBtn.classList.remove('btn-outline-secondary');
+    trimBackBtn.classList.add('btn-secondary');
+    trimSaveBtn.classList.remove('btn-outline-primary');
+    trimSaveBtn.classList.add('btn-primary');
+    trimBtn.classList.remove('btn-secondary');
+    trimBtn.classList.add('btn-outline-secondary');
+    toggleElementVisability(true, [trimBackBtn, trimSaveBtn]);
+    toggleElementVisability(false, [trimBtn]);
     let timeBounds = uiElements.gForcePlot.commitTrim();
     uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
   });
+
+  leftColumn['trimVideo'].trimControl.trimBackBtn.addEventListener('click', () => {
+    const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
+    const trimBtn = leftColumn['trimVideo'].trimControl.trimBtn;
+    const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
+    trimBackBtn.classList.remove('btn-secondary');
+    trimBackBtn.classList.add('btn-outline-secondary');
+    trimSaveBtn.classList.remove('btn-primary');
+    trimSaveBtn.classList.add('btn-outline-primary');
+    trimBtn.classList.remove('btn-outline-secondary');
+    trimBtn.classList.add('btn-secondary');
+    toggleElementVisability(false, [trimBackBtn, trimSaveBtn]);
+    toggleElementVisability(true, [trimBtn]);
+    // undo the trim, revert back to prior
+    // lazy, create the graph over
+    gForcePlot.clearGraphs();
+    gForcePlot.prepareGraphs(graphParams);
+    gForcePlot.viewGraph('3d');
+    gForcePlot.trimMode(true);
+    gForcePlot.setCameraPosition('Iso');
+
+    const values = slider.noUiSlider.get();
+    gForcePlot.drawStartEndPoints(values[0], values[1]);
+    uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
+  });
+
+
   adjustPlotlyGraph();
 }
 
