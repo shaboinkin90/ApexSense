@@ -246,16 +246,21 @@ function buildLeftColumn(rowIndex) {
   videoPlayer.id = `video-${rowIndex}`;
   videoPlayer.controls = false;
 
-  // FIXME: Don't like the layout - keep for now to exercise code paths
-  const trimCommitDiv = document.createElement('div');
-  trimCommitDiv.classList.add('d-flex', 'col');
+  // row -> 
+  //  col -> trim button
+  //  col -> slider
+  //  col -> toggle
+  const trimRowDiv = document.createElement('div');
+  trimRowDiv.classList.add('row', 'justify-content-center', 'w-100');
+  const trimBtnsCol = document.createElement('div');
+  trimBtnsCol.classList.add('trim-btns-col', 'col');
 
   const trimBackBtn = document.createElement('button');
   trimBackBtn.classList.add('btn', 'btn-outline-secondary', 'trim-btns');
   trimBackBtn.textContent = 'Undo Trim';
 
   const commitTrimBtn = document.createElement('button');
-  commitTrimBtn.classList.add('btn', 'btn-secondary', 'trim-btns');
+  commitTrimBtn.classList.add('btn', 'btn-light', 'trim-btns');
   commitTrimBtn.textContent = 'Trim Graph';
   commitTrimBtn.setAttribute('data-bs-title', 'Drag the sliders to specify the range to trim');
   commitTrimBtn.setAttribute('data-bs-toggle', 'tooltip');
@@ -267,10 +272,12 @@ function buildLeftColumn(rowIndex) {
   trimSaveBtn.classList.add('btn', 'btn-outline-primary', 'trim-btns');
   trimSaveBtn.textContent = 'Save Trim';
 
-  trimCommitDiv.appendChild(trimBackBtn);
-  trimCommitDiv.appendChild(commitTrimBtn);
-  trimCommitDiv.appendChild(trimSaveBtn);
+  trimBtnsCol.appendChild(trimBackBtn);
+  trimBtnsCol.appendChild(commitTrimBtn);
+  trimBtnsCol.appendChild(trimSaveBtn);
   toggleElementVisability(false, [trimBackBtn, commitTrimBtn, trimSaveBtn]);
+
+  trimRowDiv.appendChild(trimBtnsCol);
 
   const trimRangeSlider = document.createElement('div');
   trimRangeSlider.id = `trim-${rowIndex}`;
@@ -285,12 +292,10 @@ function buildLeftColumn(rowIndex) {
     },
   });
   toggleElementVisability(false, [trimRangeSlider]);
-
-  const toggleRow = document.createElement('div');
-  toggleRow.classList.add('d-flex', 'row');
+  trimRowDiv.appendChild(trimRangeSlider);
 
   const trimVideoTogglediv = document.createElement('div');
-  trimVideoTogglediv.classList.add('form-check', 'form-switch');
+  trimVideoTogglediv.classList.add('form-check', 'form-switch', 'trim-toggle-btn-row');
 
   const trimToggleInput = document.createElement('input');
   trimToggleInput.classList.add('form-check-input');
@@ -309,19 +314,17 @@ function buildLeftColumn(rowIndex) {
   trimToggleLabel.textContent = 'Trim video mode';
   toggleElementVisability(false, [trimToggleInput, trimToggleLabel]);
 
-
   trimVideoTogglediv.appendChild(trimToggleInput);
   trimVideoTogglediv.appendChild(trimToggleLabel);
-  toggleRow.appendChild(trimVideoTogglediv);
+
+  trimRowDiv.appendChild(trimVideoTogglediv);
 
   videoContainer.appendChild(videoPlayer);
 
   leftColumn.appendChild(buttonsRow);
   leftColumn.appendChild(dropZoneContainer);
   leftColumn.appendChild(videoContainer);
-  leftColumn.appendChild(trimCommitDiv);
-  leftColumn.appendChild(trimRangeSlider);
-  leftColumn.appendChild(toggleRow);
+  leftColumn.appendChild(trimRowDiv);
 
   // Default disabling controls that aren't useable until graphs appear
   toggleElementVisability(false, [saveBtn, viewButtonGroup, videoControls]);
@@ -355,7 +358,6 @@ function buildLeftColumn(rowIndex) {
     },
     'trimVideo': {
       'toggle': {
-        'div': trimVideoTogglediv,
         'input': trimToggleInput,
         'label': trimToggleLabel,
       },
@@ -490,15 +492,18 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
       leftColumn['viewToggleButtons'].v3d.checked = true;
       leftColumn['viewToggleButtons'].v2d.checked = false;
-      leftColumn['trimVideo'].toggle.div.hidden = true;
       leftColumn['trimVideo'].toggle.input.checked = false;
-      leftColumn['trimVideo'].trimControl.label.hidden = true;
       const slider = leftColumn['trimVideo'].trimControl.slider;
-      if (slider.noUiSlider) {
-        slider.noUiSlider.destroy();
-        slider.hidden = true;
-
-      }
+      slider.noUiSlider.updateOptions({
+        // Default values until a video is provided
+        start: [20, 80],
+        connect: true,
+        range: {
+          'min': 0,
+          'max': 100,
+        },
+      });
+      toggleElementVisability(false, [slider]);
 
       const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
       const videoControls = leftColumn['videoControls'].container;
@@ -635,6 +640,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       videoPlayer.removeAttribute('video-paused');
       videoPlayer.removeAttribute('plotly-paused');
       videoPlayer.removeAttribute('plotly-already-paused');
+      videoPlayer.removeAttribute('trim-video-ended');
     }
 
     videoControls.playPause.addEventListener('click', () => {
@@ -665,7 +671,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
           }
 
           videoPlayer.pause();
-
         }
         // play video(s)
         else {
@@ -755,7 +760,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         console.debug(`${videoPlayer.id} pause event AND video ended`);
         return;
       }
-
 
       if (videoPlayer.hasAttribute('video-paused') && shouldSyncVideos && videoSyncing) {
         const nextVideo = videoSyncing.getNextVideo();
@@ -847,9 +851,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
               rowVideoPlayer.play();
             });
           }
-          else {
-            console.warn('wtf');
-          }
           videoSyncing = null;
           return;
         }
@@ -926,7 +927,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         } else {
           console.error('logic error - videoSyncing is null during video `error`');
           videoPlayer.load();
-          console.warn(`${videoPlayer.id} error reload, sync time is ${videoSyncing.timeToSyncTo}`);
         }
       } else {
         const time = videoPlayer.currentTime;
@@ -966,16 +966,21 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
 
       if (trimToggleSwitch.checked) {
-        toggleElementVisability(true, [slider, trimBtn]);
+        // disable the overlay when trimming
+        removeOverlayTraces(rowUIElementMap);
+        overlayCheckBtn.checked = false;
+        toggleElementVisability(false, [overlayCheckBtn]);
 
-        gForcePlot.setCameraPosition('Iso');
         gForcePlot.trimMode(true);
 
         // default start +20%, end +80%
         const values = slider.noUiSlider.get();
         gForcePlot.drawStartEndPoints(values[0], values[1]);
+        toggleElementVisability(true, [slider, trimBtn]);
       } else {
+        // reset graph
         toggleElementVisability(false, [slider, trimBtn]);
+        toggleElementVisability(true, [overlayCheckBtn]);
         gForcePlot.trimMode(false);
         gForcePlot.removeTrimPoints();
       }

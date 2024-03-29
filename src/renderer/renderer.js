@@ -95,12 +95,12 @@ function addOverlayTraces(rowMap) {
     let tracesToApply = [];
 
     rowUIElementMap.forEach((rowIter, indexIter) => {
-      if (indexIter === index || rowIter['rawDataStash'] === null) {
+      if (indexIter === index || rowIter['dataStash'] === null) {
         return;
       }
 
-      const title = (rowIter['rawDataStash'].title) ? rowIter['rawDataStash'].title : `Row ${indexIter}`;
-      const trace = rowIter['rawDataStash'].data.trace;
+      const title = (rowIter['dataStash'].data.title) ? rowIter['dataStash'].data.title : `Row ${indexIter}`;
+      const trace = rowIter['dataStash'].data.trace;
       tracesToApply.push({
         'title': title,
         'trace': trace
@@ -235,61 +235,6 @@ searchBar.addEventListener('input', (e) => {
   searchTracesAction(e);
 });
 
-function loadTraceCompletion(result) {
-  loadView.hidden = true;
-  document.getElementById('main-content').hidden = false;
-
-  const uiElements = rowUIElementMap.get(result['index']);
-  if (!uiElements) {
-    console.warn(`No UI entry for ${index}?`);
-    showToast('There was a problem loading this trace', false);
-    return;
-  }
-
-  const leftColumn = uiElements['leftColumn'];
-  const rightColumn = uiElements['rightColumn'];
-
-  leftColumn['viewToggleButtons'].v3d.checked = true;
-  leftColumn['viewToggleButtons'].v2d.checked = false;
-  leftColumn['dropZoneContainer'].container.hidden = true;
-  leftColumn['videoContainer'].container.hidden = false;
-  leftColumn['videoContainer'].videoPlayer.src = result['videoPath'];
-  leftColumn['trimVideo'].toggle.div.hidden = false;
-
-  if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
-    leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
-  }
-
-  const viewBtnGroup = uiElements['leftColumn'].viewToggleButtons.buttonGroup;
-  const saveBtn = uiElements['leftColumn'].crudButtons.saveBtn;
-  const videoControls = uiElements['leftColumn'].videoControls.container;
-  toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls]);
-  toggleElementVisability(true, [headerSyncToggles]);
-
-  rightColumn['loadingSpinner'].hidden = true;
-  rightColumn['plotly'].top.hidden = false;
-  rightColumn['plotly'].bottom.hidden = true;
-
-  // Cache for overlay option
-  uiElements['rawDataStash'] = result['trace'];
-
-  const title = result['trace']['title'];
-  const params = {
-    'view': '3d',
-    'trace': result['trace'],
-    'title': title,
-  };
-
-  //uiElements.gForcePlot.overlayTraces([params]);
-  uiElements.gForcePlot.prepareGraphs(params);
-  uiElements.gForcePlot.viewGraph('3d');
-
-  if (overlayCheckBtn.checked) {
-    removeOverlayTraces(rowUIElementMap);
-    addOverlayTraces(rowUIElementMap);
-  }
-}
-
 function isVideoPlaying(videoElement) {
   return !videoElement.paused && !videoElement.ended && videoElement.readyState > 2;
 }
@@ -299,7 +244,6 @@ function debounce(func, delay) {
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(func, delay);
 }
-
 
 // Callback issued from GForcePlot
 function syncCameras(originGraph, view, originCamera) {
@@ -373,17 +317,11 @@ function setupRowForGraph(result) {
 
   const title = ('title' in result['data']) ? result['data'].title : null;
   // Cache for overlay option
-  if (result['type'] === 'read') {
-    // FIXME: standardize the dictionary
-    // new trace / load trace has different result structures
-    uiElements['rawDataStash'] = result['trace'];
-  } else {
-    uiElements['rawDataStash'] = {
-      'data': result['data'],
-      'title': title,
-      'videoPath': uiElements['dataFilePaths'].videoPath,
-    };
-  }
+  uiElements['dataStash'] = {
+    'data': result['data'],
+    'type': result['type']
+  };
+
   const leftColumn = uiElements['leftColumn'];
   const rightColumn = uiElements['rightColumn'];
   const gForcePlot = uiElements['gForcePlot'];
@@ -434,9 +372,8 @@ function setupRowForGraph(result) {
     addOverlayTraces(rowUIElementMap);
   }
 
-  // trim video toggle - UI not finalized
-  const sliderMin = 0;
-  const sliderMax = result['data'].numFrames;
+  const sliderMin = 1;
+  const sliderMax = result['data'].trace.length;
   const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
 
   slider.noUiSlider.updateOptions({
@@ -467,8 +404,8 @@ function setupRowForGraph(result) {
     trimBtn.classList.remove('btn-secondary');
     trimBtn.classList.add('btn-outline-secondary');
     toggleElementVisability(true, [trimBackBtn, trimSaveBtn]);
-    toggleElementVisability(false, [trimBtn]);
-    let timeBounds = uiElements.gForcePlot.commitTrim();
+    toggleElementVisability(false, [trimBtn, slider]);
+    let timeBounds = uiElements.gForcePlot.commitTrim(null);
     uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
   });
 
@@ -483,7 +420,7 @@ function setupRowForGraph(result) {
     trimBtn.classList.remove('btn-outline-secondary');
     trimBtn.classList.add('btn-secondary');
     toggleElementVisability(false, [trimBackBtn, trimSaveBtn]);
-    toggleElementVisability(true, [trimBtn]);
+    toggleElementVisability(true, [trimBtn, slider]);
     // undo the trim, revert back to prior
     // lazy, create the graph over
     gForcePlot.clearGraphs();

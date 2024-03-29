@@ -444,9 +444,8 @@ header {
 }
 
 .video-trim-slider {
-  margin-bottom: 2%;
-  margin-top: 2%;
-  width: 95%;
+  margin-bottom: 1%;
+  width: 95% !important;
 }
 
 .trim-btns {
@@ -461,4 +460,17 @@ header {
 /* outer video trim slider */
 .noUi-connects {
   background-color: var(--theme-primary-color) !important;
+}
+
+.trim-toggle-btn-row {
+  align-items: center;
+  display: flex !important;
+  justify-content: center;
+  margin-bottom: 2% !important;
+}
+
+.trim-btns-col {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2%;
 }

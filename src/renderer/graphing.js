@@ -103,15 +103,17 @@ class GForcePlot {
   }
 
   drawStartEndPoints(startPoint, endPoint) {
-    this.#graph3d.drawStartEndPoints(startPoint, endPoint);
+    if (this.#graph3d) {
+      this.#graph3d.drawStartEndPoints(startPoint, endPoint);
+    }
   }
 
   removeTrimPoints() {
     this.#graph3d.removeTrimPoints();
   }
 
-  commitTrim() {
-    return this.#graph3d.commitTrim();
+  commitTrim(title) {
+    return this.#graph3d.commitTrim(title);
   }
 
   viewGraph(view) {
@@ -294,7 +296,7 @@ class PlotStrategy {
     throw new ("Extend PlotStrategy and implement removeTrimPoints");
   }
 
-  commitTrim() {
+  commitTrim(title) {
     throw new ("extend blah");
   }
 
@@ -589,8 +591,8 @@ class Plot3DStrategy extends PlotStrategy {
         const videoFrame = pointData.z;
         const playbackTime = (videoFrame / fps).toFixed(2);
         if (this.trimModeEnable) {
-          // keep track of a first click and second click
-
+          // take frame with trim into account, adjust playback time of video to correspond with new location 
+          // of the trimmed plot
         } else {
           console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
 
@@ -626,9 +628,10 @@ class Plot3DStrategy extends PlotStrategy {
     const yBounds = [-1, 1];
 
     const videoFrameStart = Math.floor(parseFloat(startPoint)); // can't have part of a frame
-    const videoFrameEnd = Math.ceil(parseFloat(endPoint));
-    const playbackTimeStart = (videoFrameStart / this.fps).toFixed(2);
-    const playbackTimeEnd = (videoFrameEnd / this.fps).toFixed(2);
+    let videoFrameEnd = Math.ceil(parseFloat(endPoint));
+    videoFrameEnd = (videoFrameEnd >= this.graphData.z.length) ? (this.graphData.z.length - 1) : videoFrameEnd;
+    const playbackTimeStart = parseFloat((videoFrameStart / this.fps).toFixed(2));
+    const playbackTimeEnd = parseFloat((videoFrameEnd / this.fps).toFixed(2));
 
     const Zstart = Math.floor(videoFrameStart);
     const plotData = this.plotlyDiv.data;
@@ -709,7 +712,7 @@ class Plot3DStrategy extends PlotStrategy {
     Plotly.deleteTraces(this.plotlyDiv, [2, 3]);
   }
 
-  commitTrim() {
+  commitTrim(title) {
     const startFrame = this.trimBounds['startFrame'];
     const endFrame = this.trimBounds['endFrame'];
     const plotData = this.plotlyDiv.data;
@@ -721,7 +724,7 @@ class Plot3DStrategy extends PlotStrategy {
 
     this.trimmedGraphData = newData;
 
-    this.createPlotlyGraph('title', this.fps, this.#syncCallback, newData.x, newData.y, newData.z);
+    this.createPlotlyGraph(title, this.fps, this.#syncCallback, newData.x, newData.y, newData.z);
     return this.trimBounds;
   }
 
@@ -823,19 +826,22 @@ class Plot3DStrategy extends PlotStrategy {
     */
     let frameNumber = 0;
     if (this.trimmedGraphData !== null) {
-      this.trimBounds['startFrame']
-      frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
+      frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps) + 1; // +1 to account for Math.floor taking us below a valid frame number
+      frameNumber -= this.trimBounds['startFrame'];
 
+      if (this.videoPlayer.currentTime >= this.trimBounds['endTime']) {
+        this.videoPlayer.pause();
+      }
     } else {
       frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
     }
 
     if (frameNumber < 0 || frameNumber >= plotData[0].z.length) {
-      console.error(`Invalid frameNumber ${frameNumber} when updating marker position`);
+      // Latter condition Can happen if video syncing playback does not contain the same number of frames - this is not an error
       return;
     }
 
-    // plotData[0] == trace, plotData[1] would be marker
+    // plotData[0] == trace, plotData[1] == marker
     const newX = plotData[0].x[frameNumber];
     const newY = plotData[0].y[frameNumber];
     const newZ = plotData[0].z[frameNumber];
