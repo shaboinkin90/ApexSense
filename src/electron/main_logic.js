@@ -780,14 +780,44 @@ async function updateTrace(request) {
     OK: 'ok',
   });
 
+  const Actions = Object.freeze({
+    Title: 'title',
+    VideoPath: 'videoPath',
+    Trim: 'trim',
+  });
+
+  // to indicate to renderer what exactly was updated 
+  let actionTaken = '';
+
   log.debug(`Update trace request: ${JSON.stringify(request)}`);
-  const traceFile = path.join(ROOT_PATH, 'traces', request['traceId'], 'trace.json')
+  let traceFile = null;
+  if (request.hasOwnProperty('traceId')) {
+    traceFile = path.join(ROOT_PATH, 'traces', request['traceId'], 'trace.json');
+  } else {
+    traceFile = request['jsonPath'];
+  }
   const json = await readJsonFile(traceFile);
+  if (request.hasOwnProperty('trimRange')) {
+    if (json.hasOwnProperty('trim')) {
+      json['trim'].push({
+        'label': request['label'],
+        'range': request['trimRange']
+      });
+    } else {
+      json['trim'] = [{
+        'label': request['label'],
+        'range': request['trimRange']
+      }];
+    }
+    actionTaken = Actions.Trim;
+  }
 
   if (request.hasOwnProperty('title')) {
     json['title'] = request['title'];
+    actionTaken = Actions.Title;
   } else if (request.hasOwnProperty('updatedVideoPath')) {
     json['videoPath'] = request['updatedVideoPath'];
+    actionTaken = Actions.VideoPath;
   }
 
   try {
@@ -804,6 +834,7 @@ async function updateTrace(request) {
   return {
     'status': UpdateResponse.OK,
     'index': request['index'],
+    'action': actionTaken,
   };
 }
 

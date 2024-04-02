@@ -6,7 +6,7 @@ function refreshTooltip() {
   tooltipList = [...tooltipTriggerList].map(tooltipTrigger => new bootstrap.Tooltip(tooltipTrigger));
 }
 
-function toggleElementVisability(isEnable, elementList) {
+function toggleElementVisibility(isEnable, elementList) {
   if (isEnable) {
     elementList.forEach(div => {
       div.style.opacity = 1;
@@ -53,7 +53,7 @@ const rowUIElementMap = new Map();
 const headerCompareButtons = document.getElementById('header-compare-buttons');
 const headerSyncToggles = document.getElementById('header-sync-toggles');
 
-toggleElementVisability(false, [headerCompareButtons, headerSyncToggles]);
+toggleElementVisibility(false, [headerCompareButtons, headerSyncToggles]);
 
 const minusBtn = document.getElementById('minus-button').addEventListener('click', () => {
   removeRow();
@@ -121,7 +121,7 @@ function removeOverlayTraces(rowMap) {
 // MAIN-CONTENT
 function landingViewTransistion() {
   document.getElementById('landing-view').hidden = true;
-  toggleElementVisability(true, [headerCompareButtons]);
+  toggleElementVisibility(true, [headerCompareButtons]);
   const rootDiv = document.getElementById('main-content');
   rootDiv.hidden = false;
   buildRow(rootDiv, 1);
@@ -132,11 +132,65 @@ document.getElementById('get-started-btn').addEventListener('click', () => {
 });
 
 // SAVING UI/Action
-const saveCard = document.getElementById('save-card-element');
-const commitSaveBtn = document.getElementById('commit-save-button');
-const cancelSaveBtn = document.getElementById('cancel-save-button');
-function saveAction() {
-  if (!saveCard.hasAttribute('save-event-row-id')) {
+const saveTrimCard = document.getElementById('save-trim-element');
+const commitSaveTrimBtn = document.getElementById('commit-save-trim-button');
+const cancelSaveTrimBtn = document.getElementById('cancel-save-trim-button');
+// duplicated code with a minor difference, could be streamlined
+function saveTrimAction() {
+  if (!saveTrimCard.hasAttribute('save-event-row-id')) {
+    console.error('No id to reference while saving');
+    return;
+  }
+
+  const label = document.getElementById('form-trim-title');
+  if (label.value.trim() === '') {
+    const errorMessage = "Please provide a label for the trim.";
+    label.style.border = "2px solid red";
+    alert(errorMessage);
+    return;
+  }
+
+  const rowIndex = saveTrimCard.getAttribute('save-event-row-id');
+  const uiElements = rowUIElementMap.get(parseInt(rowIndex, 10));
+  // This needs a better check but essentially if there is no record of this 
+  // trace having already been saved, we need to tell the user to save the trace first
+  // though a better way would be to save the trace for them on their behalf
+  // like a "This trace has not been saved, we'll save it for you" type of thing
+  const jsonPath = uiElements['dataStash'].data.jsonPath;
+  const trimRange = uiElements['trimBounds'];
+  const saveTrimRequest = {
+    'type': 'update',
+    'index': rowIndex,
+    'label': label.value,
+    'jsonPath': jsonPath,
+    'trimRange': trimRange,
+  };
+  saveTrimCard.removeAttribute('save-event-row-id');
+  window.electron.traceFileIO(saveTrimRequest);
+}
+commitSaveTrimBtn.addEventListener('click', () => {
+  saveTrimAction();
+});
+cancelSaveTrimBtn.addEventListener('click', () => {
+  saveTrimCard.removeAttribute('save-event-row-id');
+  saveTrimCard.hidden = true;
+});
+
+function saveTrimCompletion(results) {
+  saveTrimCard.hidden = true;
+  const label = document.getElementById('form-trim-title');
+  label.value = '';
+  const views = document.querySelectorAll('.fade-overlay')
+  views.forEach(view => {
+    view.hidden = true;
+  });
+}
+
+const saveTraceCard = document.getElementById('save-card-element');
+const commitSaveTraceBtn = document.getElementById('commit-save-button');
+const cancelSaveTraceBtn = document.getElementById('cancel-save-button');
+function saveTraceAction() {
+  if (!saveTraceCard.hasAttribute('save-event-row-id')) {
     console.error('No id to reference while saving');
     return;
   }
@@ -149,13 +203,13 @@ function saveAction() {
     return;
   }
 
-  const rowIndex = saveCard.getAttribute('save-event-row-id');
+  const rowIndex = saveTraceCard.getAttribute('save-event-row-id');
   const uiElements = rowUIElementMap.get(parseInt(rowIndex, 10));
 
   const shouldCacheVideo = document.getElementById('store-video-checkbox').checked;
   const videoPath = uiElements['dataFilePaths'].videoPath;
   const jsonPath = uiElements['dataFilePaths'].traceJsonPath;
-  const saveRequest = {
+  const saveTraceRequest = {
     'type': 'create',
     'index': rowIndex,
     'title': title.value,
@@ -163,17 +217,16 @@ function saveAction() {
     'videoPath': videoPath,
     'jsonPath': jsonPath,
   }
-  console.log(saveRequest);
-  saveCard.removeAttribute('save-event-row-id');
-  window.electron.traceFileIO(saveRequest);
+  saveTraceCard.removeAttribute('save-event-row-id');
+  window.electron.traceFileIO(saveTraceRequest);
 }
 
-commitSaveBtn.addEventListener('click', () => {
-  saveAction();
+commitSaveTraceBtn.addEventListener('click', () => {
+  saveTraceAction();
 });
 
 function saveTraceCompletion(results) {
-  saveCard.hidden = true;
+  saveTraceCard.hidden = true;
 
   const title = document.getElementById('form-trace-title');
   title.value = '';
@@ -205,15 +258,15 @@ function saveTraceCompletion(results) {
 }
 
 function cancelSaveCardAction() {
-  saveCard.removeAttribute('save-event-row-id');
-  saveCard.hidden = true;
+  saveTraceCard.removeAttribute('save-event-row-id');
+  saveTraceCard.hidden = true;
   const views = document.querySelectorAll('.fade-overlay')
   views.forEach(view => {
     view.style.display = 'none';
   });
 }
 
-cancelSaveBtn.addEventListener('click', () => {
+cancelSaveTraceBtn.addEventListener('click', () => {
   cancelSaveCardAction();
 });
 
@@ -353,7 +406,7 @@ function setupRowForGraph(result) {
 
   const saveBtn = leftColumn['crudButtons'].saveBtn;
   const videoControls = leftColumn['videoControls'].container;
-  toggleElementVisability(true, [saveBtn, viewBtnGroup, videoControls, headerSyncToggles]);
+  toggleElementVisibility(true, [saveBtn, viewBtnGroup, videoControls, headerSyncToggles]);
 
   if (leftColumn['videoContainer'].videoPlayer.hasAttribute('plotly-paused')) {
     leftColumn['videoContainer'].videoPlayer.removeAttribute('plotly-paused');
@@ -374,9 +427,13 @@ function setupRowForGraph(result) {
 
   const sliderMin = 1;
   const sliderMax = result['data'].trace.length;
-  const slider = uiElements['leftColumn'].trimVideo.trimControl.slider;
+  const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
+  const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
+  toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
 
-  slider.noUiSlider.updateOptions({
+  const trimSlider = uiElements['leftColumn'].trimVideo.trimControl.trimSlider;
+
+  trimSlider.noUiSlider.updateOptions({
     start: [sliderMax * 0.2, sliderMax * 0.8],
     range: {
       'min': sliderMin,
@@ -384,56 +441,9 @@ function setupRowForGraph(result) {
     },
   });
 
-  leftColumn['trimVideo'].toggle.input.checked = false;
-  toggleElementVisability(true, [leftColumn['trimVideo'].toggle.input, leftColumn['trimVideo'].toggle.label]);
-
-  toggleElementVisability(false, [slider]);
-  slider.noUiSlider.on('update', function (values, _handle) {
-    uiElements.gForcePlot.drawStartEndPoints(values[0], values[1]);
-  });
-
-  // FIXME: move to event listener function
-  leftColumn['trimVideo'].trimControl.trimBtn.addEventListener('click', () => {
-    const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
-    const trimBtn = leftColumn['trimVideo'].trimControl.trimBtn;
-    const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
-    trimBackBtn.classList.remove('btn-outline-secondary');
-    trimBackBtn.classList.add('btn-secondary');
-    trimSaveBtn.classList.remove('btn-outline-primary');
-    trimSaveBtn.classList.add('btn-primary');
-    trimBtn.classList.remove('btn-secondary');
-    trimBtn.classList.add('btn-outline-secondary');
-    toggleElementVisability(true, [trimBackBtn, trimSaveBtn]);
-    toggleElementVisability(false, [trimBtn, slider]);
-    let timeBounds = uiElements.gForcePlot.commitTrim(null);
-    uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = timeBounds['startTime'];
-  });
-
-  leftColumn['trimVideo'].trimControl.trimBackBtn.addEventListener('click', () => {
-    const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
-    const trimBtn = leftColumn['trimVideo'].trimControl.trimBtn;
-    const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
-    trimBackBtn.classList.remove('btn-secondary');
-    trimBackBtn.classList.add('btn-outline-secondary');
-    trimSaveBtn.classList.remove('btn-primary');
-    trimSaveBtn.classList.add('btn-outline-primary');
-    trimBtn.classList.remove('btn-outline-secondary');
-    trimBtn.classList.add('btn-secondary');
-    toggleElementVisability(false, [trimBackBtn, trimSaveBtn]);
-    toggleElementVisability(true, [trimBtn, slider]);
-    // undo the trim, revert back to prior
-    // lazy, create the graph over
-    gForcePlot.clearGraphs();
-    gForcePlot.prepareGraphs(graphParams);
-    gForcePlot.viewGraph('3d');
-    gForcePlot.trimMode(true);
-    gForcePlot.setCameraPosition('Iso');
-
-    const values = slider.noUiSlider.get();
-    gForcePlot.drawStartEndPoints(values[0], values[1]);
-    uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
-  });
-
+  trimToggleSwitch.checked = false;
+  toggleElementVisibility(true, [trimToggleSwitch, trimToggleLabel]);
+  toggleElementVisibility(false, [trimSlider]);
 
   adjustPlotlyGraph();
 }
@@ -557,11 +567,15 @@ window.electron.receive('trace-io-complete', (result) => {
       } else {
         showToast('Update successful', true);
       }
-      // FIXME: lazy - update particular row, not refresh the entire list
-      window.electron.traceFileIO({
-        'type': 'readall',
-        'index': result['index'],
-      });
+      if (result['action'] === 'title' || result['action'] === 'videoPath') {
+        // FIXME: lazy - update particular row, not refresh the entire list
+        window.electron.traceFileIO({
+          'type': 'readall',
+          'index': result['index'],
+        });
+      } else if (result['action'] === 'trim') {
+        saveTrimCompletion(result);
+      }
       break;
     case 'delete':
       // FIXME: lazy - remove particular row, not refresh the entire list

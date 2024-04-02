@@ -177,8 +177,8 @@
               <span>Store a copy of the video</span>
             </label>
             <button type="button" class="btn" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-html="true"
-              data-bs-title="We will remember where your video file is stored. If you move the video, we won't be able to find it later.
-              <br>By selecting this option, we'll make a copy of the video. This way, even if you move the original video, you can still 
+              data-bs-title="ApexSense will remember where your video file is stored. If you move the video, ApexSense won't be able to find it later.
+              <br>By selecting this option, ApexSense make a copy of the video. This way, even if you move the original video, you can still 
               load the trace and view the video it is associated with.">
               <svg class="icon" width="16" height="16" viewBox="0 0 22 22">
                 <use href="#info"></use>
@@ -192,6 +192,23 @@
         </div>
       </div>
     </div> <!-- save-card-element -->
+    <div id="save-trim-element" class="card save-card" hidden>
+      <div class="card-body card-body-style">
+        <div class="row mt-2 mb-2">
+          <div class="col-3">
+            <label for="form-trim-title" class="col-form-label">Save trim as:</label>
+          </div>
+          <div class="col-9">
+            <input type="text" id="form-trim-title" class="form-control" placeholder="Turn 3">
+          </div>
+        </div>
+
+        <div class="card-buttons">
+          <button type="button" id="commit-save-trim-button" class="btn btn-orange card-button">Save Trim</button>
+          <button type="button" id="cancel-save-trim-button" class="btn btn-secondary card-button">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <div class="content">
       <div id="status-toast-container" class="toast-layout">
