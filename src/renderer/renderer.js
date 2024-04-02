@@ -1,9 +1,17 @@
 let tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-let tooltipList = [...tooltipTriggerList].map(tooltipTrigger => new bootstrap.Tooltip(tooltipTrigger));
+let tooltipList = [...tooltipTriggerList].map(tooltipTrigger => new bootstrap.Tooltip(tooltipTrigger, {
+  // https://stackoverflow.com/a/67622885/1452175
+  // https://getbootstrap.com/docs/5.3/components/tooltips/#options
+  container: 'body',
+  trigger: 'hover'
+}));
 
 function refreshTooltip() {
   tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-  tooltipList = [...tooltipTriggerList].map(tooltipTrigger => new bootstrap.Tooltip(tooltipTrigger));
+  tooltipList = [...tooltipTriggerList].map(tooltipTrigger => new bootstrap.Tooltip(tooltipTrigger, {
+    container: 'body',
+    trigger: 'hover'
+  }));
 }
 
 function toggleElementVisibility(isEnable, elementList) {
@@ -369,7 +377,6 @@ function setupRowForGraph(result) {
   }
 
   const title = ('title' in result['data']) ? result['data'].title : null;
-  // Cache for overlay option
   uiElements['dataStash'] = {
     'data': result['data'],
     'type': result['type']
@@ -429,6 +436,10 @@ function setupRowForGraph(result) {
   const sliderMax = result['data'].trace.length;
   const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
   const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
+  const trimLoadBtn = leftColumn['trimVideo'].trimControl.trimLoadBtn;
+  if (uiElements['dataStash'].data.trim.length > 0) {
+    toggleElementVisibility(true, [trimLoadBtn]);
+  }
   toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
 
   const trimSlider = uiElements['leftColumn'].trimVideo.trimControl.trimSlider;

@@ -1057,7 +1057,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
     });
 
     trimLoadBtn.addEventListener('click', () => {
-
+      // need a UI, but less intrusive than the load screen
     });
 
     trimCommitBtn.addEventListener('click', () => {

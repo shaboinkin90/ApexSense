@@ -266,8 +266,9 @@ async function runPythonScript(args, callback) {
           } else {
             const title = null;
             const videoPath = null;
+            const trimRanges = [];
             const response = formTraceResultResponse('process', PythonStatus.OK, index,
-              resultsJsonPath, videoPath, title, data['data'].numFrames, data['data'].fps, data['data'].trace);
+              resultsJsonPath, videoPath, title, data['data'].numFrames, data['data'].fps, data['data'].trace, trimRanges);
             callback(response);
           }
         } else {
@@ -660,8 +661,12 @@ async function readTrace(request) {
   // change `num_traces` to `numTraces` to standardize the naming convention
   updatePropertyName(json['data'], 'num_frames', 'numFrames');
 
+  let trimRanges = [];
+  if (json.hasOwnProperty('trim')) {
+    trimRanges = json['trim'];
+  }
   const response = formTraceResultResponse('read', ReadResponse.OK, request['index'],
-    request['tracePath'], request['videoPath'], json['title'], json['data'].numFrames, json['data'].fps, json['data'].trace);
+    request['tracePath'], request['videoPath'], json['title'], json['data'].numFrames, json['data'].fps, json['data'].trace, trimRanges);
 
   return response;
 }
@@ -889,7 +894,7 @@ function updatePropertyName(data, oldProp, newProp) {
   }
 }
 
-function formTraceResultResponse(type, status, index, tracePath, videoPath, title, numFrames, fps, traceArray) {
+function formTraceResultResponse(type, status, index, tracePath, videoPath, title, numFrames, fps, traceArray, trimArray) {
   function addIfNotNull(dict, key, value) {
     if (value !== null) {
       dict[key] = value;
@@ -900,10 +905,11 @@ function formTraceResultResponse(type, status, index, tracePath, videoPath, titl
     'type': type,
     'status': status,
     'index': index,
-    'data': {
+    'data': { // this is dependant on the type. Only garmin available so doesn't matter right now
       'fps': fps,
       'numFrames': numFrames,
       'trace': traceArray,
+      'trim': trimArray,
     },
   }
 
