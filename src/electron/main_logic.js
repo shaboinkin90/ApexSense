@@ -802,6 +802,14 @@ async function updateTrace(request) {
     traceFile = request['jsonPath'];
   }
   const json = await readJsonFile(traceFile);
+  if (json === null) {
+    return {
+      'status': UpdateResponse.ERROR,
+      'index': request['index'],
+      'error': 'Failed to read json file.',
+    }
+  }
+
   if (request.hasOwnProperty('trimRange')) {
     if (json.hasOwnProperty('trim')) {
       json['trim'].push({
@@ -840,6 +848,7 @@ async function updateTrace(request) {
     'status': UpdateResponse.OK,
     'index': request['index'],
     'action': actionTaken,
+    ...json,
   };
 }
 
@@ -909,8 +918,8 @@ function formTraceResultResponse(type, status, index, tracePath, videoPath, titl
       'fps': fps,
       'numFrames': numFrames,
       'trace': traceArray,
-      'trim': trimArray,
     },
+    'trim': trimArray,
   }
 
   addIfNotNull(response['data'], 'videoPath', videoPath);

@@ -176,15 +176,17 @@ function saveTrimAction() {
   saveTrimCard.removeAttribute('save-event-row-id');
   window.electron.traceFileIO(saveTrimRequest);
 }
+
 commitSaveTrimBtn.addEventListener('click', () => {
   saveTrimAction();
 });
+
 cancelSaveTrimBtn.addEventListener('click', () => {
   saveTrimCard.removeAttribute('save-event-row-id');
   saveTrimCard.hidden = true;
 });
 
-function saveTrimCompletion(results) {
+function saveTrimCompletion(result) {
   saveTrimCard.hidden = true;
   const label = document.getElementById('form-trim-title');
   label.value = '';
@@ -192,6 +194,18 @@ function saveTrimCompletion(results) {
   views.forEach(view => {
     view.hidden = true;
   });
+
+  const uiElements = rowUIElementMap.get(parseInt(result['index'], 10));
+  const trimSelector = uiElements['leftColumn'].trimVideo.trimControl.trimSelector;
+  uiElements['dataStash'].trim = result['trim'];
+  const trimRegionList = result['trim'];
+  buildSelectorTrimList(trimSelector, trimRegionList);
+
+  if (result['status'] === 'ok') {
+    showToast('Trim saved', true);
+  } else {
+    showToast('There was a problem saving the trim', false);
+  }
 }
 
 const saveTraceCard = document.getElementById('save-card-element');
@@ -379,6 +393,7 @@ function setupRowForGraph(result) {
   const title = ('title' in result['data']) ? result['data'].title : null;
   uiElements['dataStash'] = {
     'data': result['data'],
+    'trim': result['trim'],
     'type': result['type']
   };
 
@@ -436,14 +451,13 @@ function setupRowForGraph(result) {
   const sliderMax = result['data'].trace.length;
   const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
   const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
-  const trimLoadBtn = leftColumn['trimVideo'].trimControl.trimLoadBtn;
-  if (uiElements['dataStash'].data.trim.length > 0) {
-    toggleElementVisibility(true, [trimLoadBtn]);
-  }
+  const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
+  const trimRegionList = uiElements['dataStash'].trim;
+
+  buildSelectorTrimList(trimSelector, trimRegionList);
   toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
 
   const trimSlider = uiElements['leftColumn'].trimVideo.trimControl.trimSlider;
-
   trimSlider.noUiSlider.updateOptions({
     start: [sliderMax * 0.2, sliderMax * 0.8],
     range: {
@@ -573,19 +587,10 @@ window.electron.receive('trace-io-complete', (result) => {
       }
       break;
     case 'update':
-      if (result['status'] !== 'ok') {
-        showToast('Update unsuccessful', false);
-      } else {
-        showToast('Update successful', true);
-      }
-      if (result['action'] === 'title' || result['action'] === 'videoPath') {
-        // FIXME: lazy - update particular row, not refresh the entire list
-        window.electron.traceFileIO({
-          'type': 'readall',
-          'index': result['index'],
-        });
-      } else if (result['action'] === 'trim') {
+      if (result['action'] === 'trim') {
         saveTrimCompletion(result);
+      } else if (result['action'] === 'title' || result['action'] === 'video') {
+        updateTraceCompletion(result);
       }
       break;
     case 'delete':
@@ -600,6 +605,20 @@ window.electron.receive('trace-io-complete', (result) => {
       break;
   }
 });
+
+function updateTraceCompletion(result) {
+  if (result['status'] !== 'ok') {
+    showToast('Update unsuccessful', false);
+  } else {
+    showToast('Update successful', true);
+  }
+  // FIXME: lazy - update particular row, not refresh the entire list
+  window.electron.traceFileIO({
+    'type': 'readall',
+    'index': result['index'],
+  });
+
+}
 
 function exportTraceCompletion(result) {
   if (result['status'] === 'ok') {

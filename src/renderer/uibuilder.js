@@ -261,7 +261,7 @@ function buildLeftColumn(rowIndex) {
 
   const commitTrimBtn = document.createElement('button');
   commitTrimBtn.classList.add('btn', 'btn-light', 'trim-btns');
-  commitTrimBtn.textContent = 'Trim Graph';
+  commitTrimBtn.textContent = 'Trim Region';
   commitTrimBtn.setAttribute('data-bs-title', 'Drag the sliders to specify the range to trim');
   commitTrimBtn.setAttribute('data-bs-toggle', 'tooltip');
   commitTrimBtn.setAttribute('data-bs-delay', '{"show":"500", "hide":"250"}');
@@ -272,17 +272,18 @@ function buildLeftColumn(rowIndex) {
   trimSaveBtn.classList.add('btn', 'btn-outline-primary', 'trim-btns');
   trimSaveBtn.textContent = 'Save Trim';
 
-  const trimLoadBtn = document.createElement('button');
-  trimLoadBtn.classList.add('btn', 'btn-outline-light', 'trim-btns');
-  trimLoadBtn.textContent = 'Load Trim';
+  const trimSelector = document.createElement('select');
+  trimSelector.classList.add('form-select', 'm-1', 'mb-3');
+  trimSelector.style = 'width: 95%';
+  buildSelectorTrimList(trimSelector);
 
   trimBtnsCol.appendChild(trimBackBtn);
   trimBtnsCol.appendChild(commitTrimBtn);
   trimBtnsCol.appendChild(trimSaveBtn);
-  trimBtnsCol.appendChild(trimLoadBtn);
-  toggleElementVisibility(false, [trimBackBtn, commitTrimBtn, trimSaveBtn, trimLoadBtn]);
+  toggleElementVisibility(false, [trimBackBtn, commitTrimBtn, trimSaveBtn, trimSelector]);
 
   trimRowDiv.appendChild(trimBtnsCol);
+  trimRowDiv.appendChild(trimSelector);
 
   const trimSlider = document.createElement('div');
   trimSlider.id = `trim-${rowIndex}`;
@@ -297,6 +298,7 @@ function buildLeftColumn(rowIndex) {
     },
   });
   toggleElementVisibility(false, [trimSlider]);
+
   trimRowDiv.appendChild(trimSlider);
 
   const trimVideoTogglediv = document.createElement('div');
@@ -370,7 +372,7 @@ function buildLeftColumn(rowIndex) {
         'trimBackBtn': trimBackBtn,
         'trimCommitBtn': commitTrimBtn,
         'trimSaveBtn': trimSaveBtn,
-        'trimLoadBtn': trimLoadBtn,
+        'trimSelector': trimSelector,
         'trimSlider': trimSlider,
       },
     },
@@ -465,6 +467,32 @@ function buildRightColumn(rowIndex) {
     },
   };
   return columnContents;
+}
+
+function buildSelectorTrimList(trimSelector, trimRegionList) {
+  trimSelector.innerHTML = '';
+  const defaultSelectorOption = document.createElement('option');
+  defaultSelectorOption.textContent = 'Select Trimmed Region';
+  defaultSelectorOption.value = '';
+  defaultSelectorOption.selected = true;
+  trimSelector.appendChild(defaultSelectorOption);
+
+  if (trimRegionList && trimRegionList.length > 0) {
+    trimRegionList.forEach(trimRegion => {
+      if (!trimRegion.range) {
+        return;
+      }
+      const option = document.createElement('option');
+      option.value = JSON.stringify(trimRegion.range);
+      option.textContent = trimRegion.label;
+      trimSelector.appendChild(option);
+    });
+    toggleElementVisibility(true, [trimSelector]);
+    // new entries always added to bottom of list, default to the newly added option
+    trimSelector.selectedIndex += 1;
+  } else {
+    toggleElementVisibility(false, [trimSelector]);
+  }
 }
 
 // See comment above the video element event listeners.
@@ -975,7 +1003,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
     const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
     const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
-    const trimLoadBtn = leftColumn['trimVideo'].trimControl.trimLoadBtn;
+    const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
     const trimCommitBtn = leftColumn['trimVideo'].trimControl.trimCommitBtn;
     const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
 
@@ -1004,6 +1032,35 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       }
     });
 
+    trimSelector.addEventListener('change', (event) => {
+      if (trimSelector.selectedIndex === 0) {
+        // first index is always the default 'Select Trimmed Region'
+        return;
+      }
+      trimBackBtn.classList.remove('btn-outline-secondary');
+      trimBackBtn.classList.add('btn-secondary');
+      toggleElementVisibility(true, [trimBackBtn]);
+      const selectedRange = JSON.parse(event.target.value);
+      const selectedText = event.target.options[event.target.selectedIndex].textContent;
+      // remove previous trim, if applied, and apply new trim
+      const data = rowEntry['dataStash'].data;
+      const graphParams = {
+        'view': '3d',
+        'fps': data.fps,
+        'trace': data.trace,
+        'title': data.title,
+      };
+
+      gForcePlot.clearGraphs();
+      gForcePlot.prepareGraphs(graphParams);
+      gForcePlot.viewGraph('3d');
+
+      gForcePlot.removeTrimPoints();
+      gForcePlot.commitTrim(selectedText, selectedRange);
+      const videoPlayer = leftColumn['videoContainer'].videoPlayer;
+      videoPlayer.currentTime = selectedRange.startTime;
+    });
+
     trimBackBtn.addEventListener('click', () => {
       trimBackBtn.classList.remove('btn-secondary');
       trimBackBtn.classList.add('btn-outline-secondary');
@@ -1012,7 +1069,11 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       trimCommitBtn.classList.remove('btn-outline-secondary');
       trimCommitBtn.classList.add('btn-secondary');
       toggleElementVisibility(false, [trimBackBtn, trimSaveBtn]);
-      toggleElementVisibility(true, [trimCommitBtn, trimSlider]);
+      if (trimToggleSwitch.checked) {
+        toggleElementVisibility(true, [trimCommitBtn, trimSlider]);
+      } else {
+        toggleElementVisibility(false, [trimCommitBtn, trimSlider]);
+      }
       // undo the trim, revert back to prior
       // lazy - create the graph over
       if (!('dataStash' in rowEntry)) {
@@ -1027,16 +1088,21 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         'trace': data.trace,
         'title': data.title,
       };
+
       gForcePlot.clearGraphs();
       gForcePlot.prepareGraphs(graphParams);
       gForcePlot.viewGraph('3d');
-      gForcePlot.trimMode(true);
-      gForcePlot.setCameraPosition('Iso');
 
-      const values = trimSlider.noUiSlider.get();
-      gForcePlot.drawStartEndPoints(values[0], values[1]);
+      if (!trimToggleSwitch.checked) {
+        gForcePlot.trimMode(false);
+        trimSelector.selectedIndex = 0;
+      } else {
+        const values = trimSlider.noUiSlider.get();
+        gForcePlot.drawStartEndPoints(values[0], values[1]);
+      }
       delete rowEntry['trimBounds'];
       rowEntry['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
+
     });
 
     trimSaveBtn.addEventListener('click', () => {
@@ -1054,10 +1120,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       // pass in the index to the save card element as an attribute so it knows where to get the required
       // information from
       saveTrimCard.setAttribute('save-event-row-id', rowIndex);
-    });
-
-    trimLoadBtn.addEventListener('click', () => {
-      // need a UI, but less intrusive than the load screen
     });
 
     trimCommitBtn.addEventListener('click', () => {

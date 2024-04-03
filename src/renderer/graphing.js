@@ -112,8 +112,8 @@ class GForcePlot {
     this.#graph3d.removeTrimPoints();
   }
 
-  commitTrim(title) {
-    return this.#graph3d.commitTrim(title);
+  commitTrim(title, range) {
+    return this.#graph3d.commitTrim(title, range);
   }
 
   viewGraph(view) {
@@ -296,7 +296,7 @@ class PlotStrategy {
     throw new ("Extend PlotStrategy and implement removeTrimPoints");
   }
 
-  commitTrim(title) {
+  commitTrim(title, range) {
     throw new ("extend blah");
   }
 
@@ -704,17 +704,29 @@ class Plot3DStrategy extends PlotStrategy {
       return;
     }
 
-    if (plotData.length == 2) {
-      // nothing to do
-      return;
+    if (plotData.length === 4) {
+      Plotly.deleteTraces(this.plotlyDiv, [2, 3]);
     }
-    // otherwise, remove the meshes
-    Plotly.deleteTraces(this.plotlyDiv, [2, 3]);
   }
 
-  commitTrim(title) {
-    const startFrame = this.trimBounds['startFrame'];
-    const endFrame = this.trimBounds['endFrame'];
+  commitTrim(title, range) {
+    let startFrame;
+    let endFrame;
+    if (range === undefined) {
+      startFrame = this.trimBounds['startFrame'];
+      endFrame = this.trimBounds['endFrame'];
+    } else {
+      // if provided, coming from a 'load trim' path where we don't need to draw the meshes
+      // which implies we haven't set the bounds yet - do that
+      this.trimBounds['startFrame'] = range.startFrame;
+      this.trimBounds['endFrame'] = range.endFrame;
+      this.trimBounds['startTime'] = range.startTime;
+      this.trimBounds['endTime'] = range.endTime;
+
+      startFrame = this.trimBounds['startFrame'];
+      endFrame = this.trimBounds['endFrame'];
+    }
+
     const plotData = this.plotlyDiv.data;
     const newData = {
       x: plotData[0].x.slice(startFrame, endFrame),
