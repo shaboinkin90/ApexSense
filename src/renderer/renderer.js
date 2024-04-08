@@ -56,6 +56,7 @@ function showToast(message, isSuccess) {
   toastBootstrap.show();
 }
 
+
 // Stores UI elements per row, key == position index
 const rowUIElementMap = new Map();
 const headerCompareButtons = document.getElementById('header-compare-buttons');
@@ -159,6 +160,7 @@ function saveTrimAction() {
   }
 
   const rowIndex = saveTrimCard.getAttribute('save-event-row-id');
+
   const uiElements = rowUIElementMap.get(parseInt(rowIndex, 10));
   // This needs a better check but essentially if there is no record of this 
   // trace having already been saved, we need to tell the user to save the trace first
@@ -197,14 +199,35 @@ function saveTrimCompletion(result) {
 
   const uiElements = rowUIElementMap.get(parseInt(result['index'], 10));
   const trimSelector = uiElements['leftColumn'].trimVideo.trimControl.trimSelector;
+  const trimDeleteBtn = uiElements['leftColumn'].trimVideo.trimControl.trimDeleteBtn;
+
   uiElements['dataStash'].trim = result['trim'];
   const trimRegionList = result['trim'];
   buildSelectorTrimList(trimSelector, trimRegionList);
-
+  toggleElementVisibility(true, [trimDeleteBtn]);
   if (result['status'] === 'ok') {
     showToast('Trim saved', true);
   } else {
     showToast('There was a problem saving the trim', false);
+    // FIXME: error handling
+  }
+}
+
+function deleteTrimCompletion(result) {
+  // on completion, remove from list, reset graph, reset video, reset selector, reset slider if enabled
+  const uiElements = rowUIElementMap.get(parseInt(result['index'], 10));
+  const trimSelector = uiElements['leftColumn'].trimVideo.trimControl.trimSelector;
+  const trimDeleteBtn = uiElements['leftColumn'].trimVideo.trimControl.trimDeleteBtn;
+  toggleElementVisibility(false, [trimDeleteBtn]);
+
+  uiElements['dataStash'].trim = result['trim'];
+  const trimRegionList = result['trim'];
+  buildSelectorTrimList(trimSelector, trimRegionList);
+  if (result['status'] === 'ok') {
+    showToast('Trim deleted', true);
+  } else {
+    showToast('There was a problem deleting the selected trim', false);
+    // FIXME: error handling
   }
 }
 
@@ -438,7 +461,7 @@ function setupRowForGraph(result) {
   rightColumn['plotly'].top.hidden = false;
   rightColumn['plotly'].bottom.hidden = true;
 
-  uiElements['dataFilePaths'].traceJsonPath = result['jsonPath'];
+  uiElements['dataFilePaths'].traceJsonPath = result['data'].jsonPath;
   rightColumn['plotly'].top.setAttribute('has-data', '');
   rightColumn['plotly'].bottom.removeAttribute('has-data');
 
@@ -453,8 +476,14 @@ function setupRowForGraph(result) {
   const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
   const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
   const trimRegionList = uiElements['dataStash'].trim;
+  const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
 
   buildSelectorTrimList(trimSelector, trimRegionList);
+  if (trimRegionList.length > 0) {
+    // start at begnning
+    trimSelector.selectedIndex = 0;
+  }
+
   toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
 
   const trimSlider = uiElements['leftColumn'].trimVideo.trimControl.trimSlider;
@@ -587,7 +616,7 @@ window.electron.receive('trace-io-complete', (result) => {
       }
       break;
     case 'update':
-      if (result['action'] === 'trim') {
+      if (result['action'] === 'save-trim') {
         saveTrimCompletion(result);
       } else if (result['action'] === 'title' || result['action'] === 'video') {
         updateTraceCompletion(result);

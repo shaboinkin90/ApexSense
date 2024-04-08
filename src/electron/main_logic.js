@@ -402,6 +402,7 @@ async function createTrace(request) {
     };
   } catch (error) {
     log.error(error);
+    await fs.rm(outputPath, { recursive: true });
     return {
       'status': ResponseStatus.ERROR,
       'index': request['index'],
@@ -788,7 +789,8 @@ async function updateTrace(request) {
   const Actions = Object.freeze({
     Title: 'title',
     VideoPath: 'videoPath',
-    Trim: 'trim',
+    SaveTrim: 'save-trim',
+    DeleteTrim: 'delete-trim',
   });
 
   // to indicate to renderer what exactly was updated 
@@ -801,6 +803,7 @@ async function updateTrace(request) {
   } else {
     traceFile = request['jsonPath'];
   }
+
   const json = await readJsonFile(traceFile);
   if (json === null) {
     return {
@@ -813,16 +816,25 @@ async function updateTrace(request) {
   if (request.hasOwnProperty('trimRange')) {
     if (json.hasOwnProperty('trim')) {
       json['trim'].push({
+        'id': uuidv4(),
         'label': request['label'],
         'range': request['trimRange']
       });
     } else {
       json['trim'] = [{
+        'id': uuidv4(),
         'label': request['label'],
         'range': request['trimRange']
       }];
     }
-    actionTaken = Actions.Trim;
+    actionTaken = Actions.SaveTrim;
+  }
+
+  if (request.hasOwnProperty('deleteTrimId')) {
+    if (json.hasOwnProperty('trim')) {
+      json['trim'] = json['trim'].filter(trim => trim.id !== request['deleteTrimId']);
+    }
+    actionTaken = Actions.DeleteTrim;
   }
 
   if (request.hasOwnProperty('title')) {

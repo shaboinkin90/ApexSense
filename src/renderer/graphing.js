@@ -473,7 +473,7 @@ class Plot2DStrategy extends PlotStrategy {
       return;
     }
 
-    const frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
+    const frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps) - 1;
     if (frameNumber < 0 || frameNumber >= plotData[0].x.length) {
       return;
     }
@@ -836,20 +836,17 @@ class Plot3DStrategy extends PlotStrategy {
     // marker location is based on video start time
     video does not have concept of trim'd times. +5 seconds trimStartTime means take currentTime - trimStartTime 
     */
-    let frameNumber = 0;
-    if (this.trimmedGraphData !== null) {
-      frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps) + 1; // +1 to account for Math.floor taking us below a valid frame number
+    let frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps) - 1;
+    if (this.trimModeEnable) {
       frameNumber -= this.trimBounds['startFrame'];
-
       if (this.videoPlayer.currentTime >= this.trimBounds['endTime']) {
+        changeSvgIcon(videoControls.playPause, '#play');
         this.videoPlayer.pause();
       }
-    } else {
-      frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps);
     }
-
     if (frameNumber < 0 || frameNumber >= plotData[0].z.length) {
       // Latter condition Can happen if video syncing playback does not contain the same number of frames - this is not an error
+      this.prevTime = this.videoPlayer.currentTime;
       return;
     }
 

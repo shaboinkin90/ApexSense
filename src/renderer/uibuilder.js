@@ -257,7 +257,7 @@ function buildLeftColumn(rowIndex) {
 
   const trimBackBtn = document.createElement('button');
   trimBackBtn.classList.add('btn', 'btn-outline-secondary', 'trim-btns');
-  trimBackBtn.textContent = 'Undo Trim';
+  trimBackBtn.textContent = 'Reset Trim';
 
   const commitTrimBtn = document.createElement('button');
   commitTrimBtn.classList.add('btn', 'btn-light', 'trim-btns');
@@ -272,6 +272,16 @@ function buildLeftColumn(rowIndex) {
   trimSaveBtn.classList.add('btn', 'btn-outline-primary', 'trim-btns');
   trimSaveBtn.textContent = 'Save Trim';
 
+  const trimDeleteBtn = document.createElement('button');
+  trimDeleteBtn.classList.add('btn', 'btn-outline-secondary', 'trim-btns');
+  trimDeleteBtn.textContent = 'Delete Trim';
+  trimDeleteBtn.setAttribute('data-bs-title', 'Select the trim to delete from the list below');
+  trimDeleteBtn.setAttribute('data-bs-toggle', 'tooltip');
+  trimDeleteBtn.setAttribute('data-bs-delay', '{"show":"500", "hide":"250"}');
+  trimDeleteBtn.setAttribute('hide', '250');
+  trimDeleteBtn.setAttribute('data-bs-placement', 'top');
+
+
   const trimSelector = document.createElement('select');
   trimSelector.classList.add('form-select', 'm-1', 'mb-3');
   trimSelector.style = 'width: 95%';
@@ -280,7 +290,9 @@ function buildLeftColumn(rowIndex) {
   trimBtnsCol.appendChild(trimBackBtn);
   trimBtnsCol.appendChild(commitTrimBtn);
   trimBtnsCol.appendChild(trimSaveBtn);
-  toggleElementVisibility(false, [trimBackBtn, commitTrimBtn, trimSaveBtn, trimSelector]);
+  trimBtnsCol.appendChild(trimDeleteBtn);
+
+  toggleElementVisibility(false, [trimBackBtn, commitTrimBtn, trimSaveBtn, trimDeleteBtn, trimSelector]);
 
   trimRowDiv.appendChild(trimBtnsCol);
   trimRowDiv.appendChild(trimSelector);
@@ -301,8 +313,8 @@ function buildLeftColumn(rowIndex) {
 
   trimRowDiv.appendChild(trimSlider);
 
-  const trimVideoTogglediv = document.createElement('div');
-  trimVideoTogglediv.classList.add('form-check', 'form-switch', 'trim-toggle-btn-row');
+  const trimVideoToggleDiv = document.createElement('div');
+  trimVideoToggleDiv.classList.add('form-check', 'form-switch', 'trim-toggle-btn-row');
 
   const trimToggleInput = document.createElement('input');
   trimToggleInput.classList.add('form-check-input');
@@ -321,10 +333,10 @@ function buildLeftColumn(rowIndex) {
   trimToggleLabel.textContent = 'Trim video mode';
   toggleElementVisibility(false, [trimToggleInput, trimToggleLabel]);
 
-  trimVideoTogglediv.appendChild(trimToggleInput);
-  trimVideoTogglediv.appendChild(trimToggleLabel);
+  trimVideoToggleDiv.appendChild(trimToggleInput);
+  trimVideoToggleDiv.appendChild(trimToggleLabel);
 
-  trimRowDiv.appendChild(trimVideoTogglediv);
+  trimRowDiv.appendChild(trimVideoToggleDiv);
 
   videoContainer.appendChild(videoPlayer);
 
@@ -365,6 +377,7 @@ function buildLeftColumn(rowIndex) {
     },
     'trimVideo': {
       'toggle': {
+        'div': trimVideoToggleDiv,
         'input': trimToggleInput,
         'label': trimToggleLabel,
       },
@@ -372,6 +385,7 @@ function buildLeftColumn(rowIndex) {
         'trimBackBtn': trimBackBtn,
         'trimCommitBtn': commitTrimBtn,
         'trimSaveBtn': trimSaveBtn,
+        'trimDeleteBtn': trimDeleteBtn,
         'trimSelector': trimSelector,
         'trimSlider': trimSlider,
       },
@@ -475,6 +489,7 @@ function buildSelectorTrimList(trimSelector, trimRegionList) {
   defaultSelectorOption.textContent = 'Select Trimmed Region';
   defaultSelectorOption.value = '';
   defaultSelectorOption.selected = true;
+  defaultSelectorOption.disabled = true;
   trimSelector.appendChild(defaultSelectorOption);
 
   if (trimRegionList && trimRegionList.length > 0) {
@@ -483,17 +498,33 @@ function buildSelectorTrimList(trimSelector, trimRegionList) {
         return;
       }
       const option = document.createElement('option');
-      option.value = JSON.stringify(trimRegion.range);
+      option.value = JSON.stringify(trimRegion);
       option.textContent = trimRegion.label;
       trimSelector.appendChild(option);
     });
     toggleElementVisibility(true, [trimSelector]);
     // new entries always added to bottom of list, default to the newly added option
-    trimSelector.selectedIndex += 1;
+    trimSelector.selectedIndex = trimRegionList.length; // 1-based index due to default option at index 0
   } else {
     toggleElementVisibility(false, [trimSelector]);
   }
 }
+
+function resetTrimElements(rowEntry) {
+  const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
+  const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
+
+  const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
+  const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
+  const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
+  const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
+  const trimCommitBtn = leftColumn['trimVideo'].trimControl.trimCommitBtn;
+  const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
+
+
+}
+
+
 
 // See comment above the video element event listeners.
 // Could use a rethink of code structure
@@ -523,8 +554,10 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       changeSvgIcon(audioBtn, '#audio-off');
 
       leftColumn['videoContainer'].videoPlayer.src = '';
+      // setting src to '' leads to a consistent stream of 
+      // !! Video video-1 error MEDIA_ELEMENT_ERROR: Empty src attribute !!
+      // errors in the console. Remove the attribute stops errors.
       leftColumn['videoContainer'].videoPlayer.removeAttribute('src');
-
       leftColumn['videoContainer'].videoPlayer.muted = false;
       leftColumn['videoContainer'].container.hidden = true;
 
@@ -534,6 +567,10 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       leftColumn['viewToggleButtons'].v2d.checked = false;
       leftColumn['trimVideo'].toggle.input.checked = false;
       const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
+      const trimToggleInput = leftColumn['trimVideo'].toggle.input;
+      const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
+      const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
+      buildSelectorTrimList(trimSelector);
       trimSlider.noUiSlider.updateOptions({
         // Default values until a video is provided
         start: [20, 80],
@@ -543,11 +580,12 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
           'max': 100,
         },
       });
-      toggleElementVisibility(false, [trimSlider]);
 
       const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
       const videoControls = leftColumn['videoControls'].container;
-      toggleElementVisibility(false, [saveBtn, viewBtns, videoControls]);
+
+      toggleElementVisibility(false, [trimSelector, trimSlider, trimToggleInput, trimToggleLabel,
+        saveBtn, viewBtns, videoControls]);
 
       rightColumn['plotly'].top.hidden = true;
       rightColumn['plotly'].bottom.hidden = true;
@@ -673,7 +711,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
   {
     const videoPlayer = leftColumn['videoContainer'].videoPlayer;
     const videoControls = leftColumn['videoControls'];
-
+    const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
     function removeVideoAttributes(videoPlayer) {
       videoPlayer.removeAttribute('video-error-reset');
       videoPlayer.removeAttribute('video-stopped');
@@ -681,6 +719,17 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       videoPlayer.removeAttribute('plotly-paused');
       videoPlayer.removeAttribute('plotly-already-paused');
       videoPlayer.removeAttribute('trim-video-ended');
+    }
+
+    function resetVideoPlayerTime() {
+      if (trimSelector.selectedIndex > 0) {
+        const selectedEntry = JSON.parse(trimSelector.options[trimSelector.selectedIndex].value);
+        const { startTime } = selectedEntry.range;
+        videoPlayer.currentTime = startTime;
+      } else {
+        videoPlayer.currentTime = 0;
+      }
+      changeSvgIcon(videoControls.playPause, '#play');
     }
 
     videoControls.playPause.addEventListener('click', () => {
@@ -763,12 +812,12 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
         if (isVideoPlaying(videoPlayer)) {
           videoPlayer.pause();
-          videoPlayer.currentTime = 0;
+          resetVideoPlayerTime();
 
         } else {
           // playing -> pause btn -> stop btn
           // `pause` event is not triggered if already paused, so set time here
-          videoPlayer.currentTime = 0;
+          resetVideoPlayerTime();
         }
 
         // stopping requires a pause and currentTime = 0. 
@@ -844,7 +893,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       // stopping needs seek, on `canplay` after seek, check for syncing flag
       if (videoPlayer.hasAttribute('video-stopped')) {
         console.log(`${videoPlayer.id} has video-stopped. Time = 0`);
-        videoPlayer.currentTime = 0;
+        resetVideoPlayerTime();
       }
     });
 
@@ -972,8 +1021,9 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         const time = videoPlayer.currentTime;
         videoPlayer.load();
         if (videoPlayer.hasAttribute('video-stopped')) {
-          videoPlayer.currentTime = 0;
+          resetVideoPlayerTime();
         } else {
+          console.log(`Error path ${time}`);
           videoPlayer.currentTime = time;
         }
       }
@@ -1000,9 +1050,9 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
   {
     const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
     const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
-
     const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
     const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
+    const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
     const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
     const trimCommitBtn = leftColumn['trimVideo'].trimControl.trimCommitBtn;
     const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
@@ -1016,7 +1066,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         // disable the overlay when trimming
         removeOverlayTraces(rowUIElementMap);
         overlayCheckBtn.checked = false;
-        toggleElementVisibility(false, [overlayCheckBtn]);
+        toggleElementVisibility(false, [overlayCheckBtn, trimSelector]);
 
         gForcePlot.trimMode(true);
 
@@ -1026,7 +1076,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       } else {
         // reset graph
         toggleElementVisibility(false, [trimSlider, trimCommitBtn]);
-        toggleElementVisibility(true, [overlayCheckBtn]);
+        toggleElementVisibility(true, [overlayCheckBtn, trimSelector]);
         gForcePlot.trimMode(false);
         gForcePlot.removeTrimPoints();
       }
@@ -1034,12 +1084,18 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
     trimSelector.addEventListener('change', (event) => {
       if (trimSelector.selectedIndex === 0) {
-        // first index is always the default 'Select Trimmed Region'
+        // first index is always the default 
+        toggleElementVisibility(false, [trimDeleteBtn]);
         return;
       }
       trimBackBtn.classList.remove('btn-outline-secondary');
       trimBackBtn.classList.add('btn-secondary');
-      toggleElementVisibility(true, [trimBackBtn]);
+      toggleElementVisibility(true, [trimBackBtn, trimDeleteBtn]);
+      // for simplicity, disable the trim mode after selecting.
+      // To implement, there would need to be tracking of a second level of offsetting
+      // first trim offsets from the start, a second trim would be start + first trim + second trim
+      // which can get out of hand if the end user keeps attempting to trim
+      toggleElementVisibility(false, [trimToggleLabel, trimToggleSwitch]);
       const selectedRange = JSON.parse(event.target.value);
       const selectedText = event.target.options[event.target.selectedIndex].textContent;
       // remove previous trim, if applied, and apply new trim
@@ -1055,10 +1111,10 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       gForcePlot.prepareGraphs(graphParams);
       gForcePlot.viewGraph('3d');
 
-      gForcePlot.removeTrimPoints();
-      gForcePlot.commitTrim(selectedText, selectedRange);
+      //gForcePlot.removeTrimPoints();
+      gForcePlot.commitTrim(selectedText, selectedRange['range']);
       const videoPlayer = leftColumn['videoContainer'].videoPlayer;
-      videoPlayer.currentTime = selectedRange.startTime;
+      videoPlayer.currentTime = selectedRange['range'].startTime;
     });
 
     trimBackBtn.addEventListener('click', () => {
@@ -1069,6 +1125,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       trimCommitBtn.classList.remove('btn-outline-secondary');
       trimCommitBtn.classList.add('btn-secondary');
       toggleElementVisibility(false, [trimBackBtn, trimSaveBtn]);
+      toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
       if (trimToggleSwitch.checked) {
         toggleElementVisibility(true, [trimCommitBtn, trimSlider]);
       } else {
@@ -1097,12 +1154,46 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         gForcePlot.trimMode(false);
         trimSelector.selectedIndex = 0;
       } else {
+        // graph cleared so re-enable
+        gForcePlot.trimMode(true);
         const values = trimSlider.noUiSlider.get();
         gForcePlot.drawStartEndPoints(values[0], values[1]);
       }
       delete rowEntry['trimBounds'];
+      rowEntry['leftColumn'].videoContainer.videoPlayer.pause();
       rowEntry['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
+    });
 
+
+    trimDeleteBtn.addEventListener('click', () => {
+      const modalElement = document.getElementById('modal-container');
+      const bsModal = new bootstrap.Modal(modalElement);
+
+      const deleteTrimBtn = document.getElementById('delete-trim-btn');
+
+      function deleteTrimEvent() {
+        const selectedTrim = JSON.parse(trimSelector.value);
+        if (!selectedTrim) {
+          console.error(`No json in trimSelector.value`);
+          //error to user
+          return;
+        }
+        const jsonPath = rowEntry['dataFilePaths'].traceJsonPath;
+        const deleteTrimRequest = {
+          'type': 'update',
+          'index': rowIndex,
+          'jsonPath': jsonPath,
+          'deleteTrimId': selectedTrim['id'],
+        };
+        console.log(`Delete trim request ${deleteTrimRequest}`);
+        window.electron.traceFileIO(deleteTrimRequest);
+
+        // modal is shared amongst all rows, so remove after use.
+        deleteTrimBtn.removeEventListener('click', deleteTrimEvent);
+        bsModal.hide();
+      }
+      deleteTrimBtn.addEventListener('click', deleteTrimEvent);
+      bsModal.show();
     });
 
     trimSaveBtn.addEventListener('click', () => {
@@ -1130,8 +1221,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       trimCommitBtn.classList.remove('btn-secondary');
       trimCommitBtn.classList.add('btn-outline-secondary');
       toggleElementVisibility(true, [trimBackBtn, trimSaveBtn]);
-      toggleElementVisibility(false, [trimCommitBtn, trimSlider]);
-
+      toggleElementVisibility(false, [trimCommitBtn, trimSlider, trimToggleSwitch, trimToggleLabel]);
       let title = ('title' in rowEntry['dataStash'].data) ? rowEntry['dataStash'].data.title : null;
       if (title) {
         title += ' Trimmed';
