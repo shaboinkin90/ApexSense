@@ -587,16 +587,10 @@ class Plot3DStrategy extends PlotStrategy {
     // rather than passing the underlying type directly in here
     this.plotlyDiv.on('plotly_click', (eventData) => {
       debounce(() => {
-        const pointData = eventData.points[0];
-        const videoFrame = pointData.z;
-        const playbackTime = (videoFrame / fps).toFixed(2);
-        if (this.trimModeEnable) {
-          // take frame with trim into account, adjust playback time of video to correspond with new location 
-          // of the trimmed plot
-        } else {
-          console.log(`${this.videoPlayer.id} plotly_click set to ${playbackTime}`);
+        // FIXME: trimmed data is not being taken into account
 
-          // if the video is playing, pause first because we'll need to wait for seeking to finish before resuming
+        function handleVideoPlayback(videoFrame) {
+          const playbackTime = (videoFrame / fps).toFixed(2);
           if (!this.videoPlayer.paused) {
             console.log(`${this.videoPlayer.id} will pause due to plotly_click`);
             this.videoPlayer.pause();
@@ -610,6 +604,16 @@ class Plot3DStrategy extends PlotStrategy {
             // safe to seek
             this.videoPlayer.currentTime = playbackTime;
           }
+        }
+
+        if (this.trimBounds['startFrame'] !== null && this.trimBounds['endFrame'] !== null) {
+          const pointData = eventData.points[0];
+          const videoFrame = pointData.z + this.trimBounds['startFrame'];
+          handleVideoPlayback.call(this, videoFrame);
+        } else {
+          const pointData = eventData.points[0];
+          const videoFrame = pointData.z;
+          handleVideoPlayback.call(this, videoFrame);
         }
       }, 100);
     });
@@ -836,16 +840,23 @@ class Plot3DStrategy extends PlotStrategy {
     // marker location is based on video start time
     video does not have concept of trim'd times. +5 seconds trimStartTime means take currentTime - trimStartTime 
     */
+
     let frameNumber = Math.floor(this.videoPlayer.currentTime * this.fps) - 1;
-    if (this.trimModeEnable) {
+    if (this.trimBounds['startFrame']) {
       frameNumber -= this.trimBounds['startFrame'];
+      if (frameNumber < 1) {
+        frameNumber = 1;
+      }
       if (this.videoPlayer.currentTime >= this.trimBounds['endTime']) {
-        changeSvgIcon(videoControls.playPause, '#play');
+        // fix the icon 
+        // changeSvgIcon(videoControls.playPause, '#play');
         this.videoPlayer.pause();
       }
     }
+
     if (frameNumber < 0 || frameNumber >= plotData[0].z.length) {
       // Latter condition Can happen if video syncing playback does not contain the same number of frames - this is not an error
+      // if multiple videos are supplied of a particular corner and they are not synced to the same exact point, the total frame numbers will never match up
       this.prevTime = this.videoPlayer.currentTime;
       return;
     }

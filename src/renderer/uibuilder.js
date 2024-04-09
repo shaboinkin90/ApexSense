@@ -255,25 +255,25 @@ function buildLeftColumn(rowIndex) {
   const trimBtnsCol = document.createElement('div');
   trimBtnsCol.classList.add('trim-btns-col', 'col');
 
-  const trimBackBtn = document.createElement('button');
-  trimBackBtn.classList.add('btn', 'btn-outline-secondary', 'trim-btns');
-  trimBackBtn.textContent = 'Reset Trim';
+  const trimResetBtn = document.createElement('button');
+  trimResetBtn.classList.add('btn', 'btn-outline-secondary', 'trim-btns');
+  trimResetBtn.textContent = 'Reset Trim';
 
-  const commitTrimBtn = document.createElement('button');
-  commitTrimBtn.classList.add('btn', 'btn-light', 'trim-btns');
-  commitTrimBtn.textContent = 'Trim Region';
-  commitTrimBtn.setAttribute('data-bs-title', 'Drag the sliders to specify the range to trim');
-  commitTrimBtn.setAttribute('data-bs-toggle', 'tooltip');
-  commitTrimBtn.setAttribute('data-bs-delay', '{"show":"500", "hide":"250"}');
-  commitTrimBtn.setAttribute('hide', '250');
-  commitTrimBtn.setAttribute('data-bs-placement', 'top');
+  const trimCommitBtn = document.createElement('button');
+  trimCommitBtn.classList.add('btn', 'btn-outline-success', 'trim-btns');
+  trimCommitBtn.textContent = 'Trim Region';
+  trimCommitBtn.setAttribute('data-bs-title', 'Drag the sliders to specify the range to trim');
+  trimCommitBtn.setAttribute('data-bs-toggle', 'tooltip');
+  trimCommitBtn.setAttribute('data-bs-delay', '{"show":"500", "hide":"250"}');
+  trimCommitBtn.setAttribute('hide', '250');
+  trimCommitBtn.setAttribute('data-bs-placement', 'top');
 
   const trimSaveBtn = document.createElement('button');
   trimSaveBtn.classList.add('btn', 'btn-outline-primary', 'trim-btns');
   trimSaveBtn.textContent = 'Save Trim';
 
   const trimDeleteBtn = document.createElement('button');
-  trimDeleteBtn.classList.add('btn', 'btn-outline-secondary', 'trim-btns');
+  trimDeleteBtn.classList.add('btn', 'btn-outline-light', 'trim-btns');
   trimDeleteBtn.textContent = 'Delete Trim';
   trimDeleteBtn.setAttribute('data-bs-title', 'Select the trim to delete from the list below');
   trimDeleteBtn.setAttribute('data-bs-toggle', 'tooltip');
@@ -287,12 +287,12 @@ function buildLeftColumn(rowIndex) {
   trimSelector.style = 'width: 95%';
   buildSelectorTrimList(trimSelector);
 
-  trimBtnsCol.appendChild(trimBackBtn);
-  trimBtnsCol.appendChild(commitTrimBtn);
+  trimBtnsCol.appendChild(trimResetBtn);
+  trimBtnsCol.appendChild(trimCommitBtn);
   trimBtnsCol.appendChild(trimSaveBtn);
   trimBtnsCol.appendChild(trimDeleteBtn);
 
-  toggleElementVisibility(false, [trimBackBtn, commitTrimBtn, trimSaveBtn, trimDeleteBtn, trimSelector]);
+  toggleElementVisibility(false, [trimResetBtn, trimCommitBtn, trimSaveBtn, trimDeleteBtn, trimSelector]);
 
   trimRowDiv.appendChild(trimBtnsCol);
   trimRowDiv.appendChild(trimSelector);
@@ -382,8 +382,8 @@ function buildLeftColumn(rowIndex) {
         'label': trimToggleLabel,
       },
       'trimControl': {
-        'trimBackBtn': trimBackBtn,
-        'trimCommitBtn': commitTrimBtn,
+        'trimResetBtn': trimResetBtn,
+        'trimCommitBtn': trimCommitBtn,
         'trimSaveBtn': trimSaveBtn,
         'trimDeleteBtn': trimDeleteBtn,
         'trimSelector': trimSelector,
@@ -483,7 +483,7 @@ function buildRightColumn(rowIndex) {
   return columnContents;
 }
 
-function buildSelectorTrimList(trimSelector, trimRegionList) {
+function buildSelectorTrimList(trimSelector, trimRegionList, shouldSelectLastOption) {
   trimSelector.innerHTML = '';
   const defaultSelectorOption = document.createElement('option');
   defaultSelectorOption.textContent = 'Select Trimmed Region';
@@ -503,212 +503,298 @@ function buildSelectorTrimList(trimSelector, trimRegionList) {
       trimSelector.appendChild(option);
     });
     toggleElementVisibility(true, [trimSelector]);
-    // new entries always added to bottom of list, default to the newly added option
-    trimSelector.selectedIndex = trimRegionList.length; // 1-based index due to default option at index 0
+    if (shouldSelectLastOption) {
+      // new entries always added to bottom of list, default to the newly added option
+      trimSelector.selectedIndex = trimRegionList.length; // 1-based index due to default option at index 0
+    } else {
+      trimSelector.selectedIndex = 0;
+    }
   } else {
     toggleElementVisibility(false, [trimSelector]);
   }
 }
 
 function resetTrimElements(rowEntry) {
+  const leftColumn = rowEntry['leftColumn'];
   const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
   const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
 
-  const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
+  const trimResetBtn = leftColumn['trimVideo'].trimControl.trimResetBtn;
   const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
   const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
   const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
   const trimCommitBtn = leftColumn['trimVideo'].trimControl.trimCommitBtn;
   const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
 
+  trimResetBtn.classList.remove('btn-secondary');
+  trimResetBtn.classList.add('btn-outline-secondary');
+  trimSaveBtn.classList.remove('btn-primary');
+  trimSaveBtn.classList.add('btn-outline-primary');
+  trimCommitBtn.classList.remove('btn-success');
+  trimCommitBtn.classList.add('btn-outline-success');
+  trimDeleteBtn.classList.remove('btn-light');
+  trimDeleteBtn.classList.add('btn-outline-light');
 
+  buildSelectorTrimList(trimSelector);
+  trimSlider.noUiSlider.updateOptions({
+    // Default values until a video is provided
+    start: [20, 80],
+    connect: true,
+    range: {
+      'min': 0,
+      'max': 100,
+    },
+  });
+
+  toggleElementVisibility(false, [trimResetBtn, trimSaveBtn, trimDeleteBtn, trimSelector,
+    trimCommitBtn, trimSlider, trimToggleLabel, trimToggleSwitch]);
 }
-
-
 
 // See comment above the video element event listeners.
 // Could use a rethink of code structure
 let videoSyncing = null;
-
 function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
-  // Need the map entry to access the 'dataStash' stuff - would like to think of a better way
   const rowEntry = rowUIElementMap.get(rowIndex);
   if (!rowEntry) {
     console.error(`Row ${rowIndex} not found in rowUIElementMap!`);
     return;
   }
-  // cruds
-  {
-    const newBtn = leftColumn['crudButtons'].newBtn;
-    const saveBtn = leftColumn['crudButtons'].saveBtn;
-    const loadBtn = leftColumn['crudButtons'].loadBtn;
-    newBtn.addEventListener('click', () => {
-      // Clear out UI
-      leftColumn['videoContainer'].videoPlayer.pause();
-      gForcePlot.clearGraphs();
 
-      const playPauseBtn = leftColumn['videoControls'].playPause;
-      changeSvgIcon(playPauseBtn, '#play');
+  crudBtnEvents();
+  graphViewBtnEvents();
+  dropzoneEvents();
+  videoEvents();
+  trimEvents();
+  plotViewBtnEvents();
 
-      const audioBtn = leftColumn['videoControls'].audio;
-      changeSvgIcon(audioBtn, '#audio-off');
+  function plotViewBtnEvents() {
+    const dropDownButton = rightColumn['viewButtons'].dropDownButton;
+    const dropDownMenu = rightColumn['viewButtons'].dropDownMenu;
+    dropDownMenu.addEventListener('click', (event) => {
+      if (event.target.classList.contains('dropdown-item')) {
+        const clickedItemText = event.target.textContent;
+        dropDownButton.textContent = clickedItemText;
+        gForcePlot.setCameraPosition(clickedItemText);
+      }
+    });
+  }
 
-      leftColumn['videoContainer'].videoPlayer.src = '';
-      // setting src to '' leads to a consistent stream of 
-      // !! Video video-1 error MEDIA_ELEMENT_ERROR: Empty src attribute !!
-      // errors in the console. Remove the attribute stops errors.
-      leftColumn['videoContainer'].videoPlayer.removeAttribute('src');
-      leftColumn['videoContainer'].videoPlayer.muted = false;
-      leftColumn['videoContainer'].container.hidden = true;
+  function trimEvents() {
+    const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
+    const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
+    const trimResetBtn = leftColumn['trimVideo'].trimControl.trimResetBtn;
+    const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
+    const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
+    const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
+    const trimCommitBtn = leftColumn['trimVideo'].trimControl.trimCommitBtn;
+    const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
 
-      leftColumn['dropZoneContainer'].container.hidden = false;
-
-      leftColumn['viewToggleButtons'].v3d.checked = true;
-      leftColumn['viewToggleButtons'].v2d.checked = false;
-      leftColumn['trimVideo'].toggle.input.checked = false;
-      const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
-      const trimToggleInput = leftColumn['trimVideo'].toggle.input;
-      const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
-      const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
-      buildSelectorTrimList(trimSelector);
-      trimSlider.noUiSlider.updateOptions({
-        // Default values until a video is provided
-        start: [20, 80],
-        connect: true,
-        range: {
-          'min': 0,
-          'max': 100,
-        },
-      });
-
-      const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
-      const videoControls = leftColumn['videoControls'].container;
-
-      toggleElementVisibility(false, [trimSelector, trimSlider, trimToggleInput, trimToggleLabel,
-        saveBtn, viewBtns, videoControls]);
-
-      rightColumn['plotly'].top.hidden = true;
-      rightColumn['plotly'].bottom.hidden = true;
-
-      rowEntry['rawDataStash'] = null;
-      rowEntry['dataFilePaths'].traceJsonPath = '';
-      rowEntry['dataFilePaths'].videoPath = '';
-
-      removeOverlayTraces(rowUIElementMap);
-      addOverlayTraces(rowUIElementMap);
+    trimSlider.noUiSlider.on('update', function (values, _handle) {
+      gForcePlot.drawStartEndPoints(values[0], values[1]);
     });
 
-    saveBtn.addEventListener('click', () => {
-      // dim, present card
+    trimToggleSwitch.addEventListener('click', () => {
+      if (trimToggleSwitch.checked) {
+        // disable the overlay when trimming
+        removeOverlayTraces(rowUIElementMap);
+        overlayCheckBtn.checked = false;
+        toggleElementVisibility(false, [overlayCheckBtn, trimSelector]);
+
+        gForcePlot.trimMode(true);
+
+        const values = trimSlider.noUiSlider.get();
+        gForcePlot.drawStartEndPoints(values[0], values[1]);
+        trimCommitBtn.classList.remove('btn-outline-success');
+        trimCommitBtn.classList.add('btn-success');
+        toggleElementVisibility(true, [trimSlider, trimCommitBtn]);
+      } else {
+        // reset graph
+        trimCommitBtn.classList.remove('btn-success');
+        trimCommitBtn.classList.add('btn-outline-success');
+        toggleElementVisibility(false, [trimSlider, trimCommitBtn]);
+        toggleElementVisibility(true, [overlayCheckBtn, trimSelector]);
+        gForcePlot.trimMode(false);
+        gForcePlot.removeTrimPoints();
+      }
+    });
+
+    trimSelector.addEventListener('change', (event) => {
+      if (trimSelector.selectedIndex === 0) {
+        // first index is always the default 
+        toggleElementVisibility(false, [trimDeleteBtn]);
+        return;
+      }
+      trimResetBtn.classList.remove('btn-outline-secondary');
+      trimResetBtn.classList.add('btn-secondary');
+      trimDeleteBtn.classList.remove('btn-outline-light');
+      trimDeleteBtn.classList.add('btn-light');
+
+      toggleElementVisibility(true, [trimResetBtn, trimDeleteBtn]);
+      // for simplicity, disable the trim mode after selecting.
+      // To implement, there would need to be tracking of a second level of offsetting
+      // first trim offsets from the start, a second trim would be start + first trim + second trim
+      // which can get out of hand if the end user keeps attempting to trim
+      toggleElementVisibility(false, [trimToggleLabel, trimToggleSwitch]);
+      const selectedRange = JSON.parse(event.target.value);
+      const selectedText = event.target.options[event.target.selectedIndex].textContent;
+      // remove previous trim, if applied, and apply new trim
+      const data = rowEntry['dataStash'].data;
+      const graphParams = {
+        'view': '3d',
+        'fps': data.fps,
+        'trace': data.trace,
+        'title': data.title,
+      };
+
+      gForcePlot.clearGraphs();
+      gForcePlot.prepareGraphs(graphParams);
+      gForcePlot.viewGraph('3d');
+
+      //gForcePlot.removeTrimPoints();
+      gForcePlot.commitTrim(selectedText, selectedRange['range']);
+      const videoPlayer = leftColumn['videoContainer'].videoPlayer;
+      videoPlayer.currentTime = selectedRange['range'].startTime;
+    });
+
+    trimResetBtn.addEventListener('click', () => {
+      trimResetBtn.classList.remove('btn-secondary');
+      trimResetBtn.classList.add('btn-outline-secondary');
+      if (!trimToggleSwitch.checked) {
+        trimCommitBtn.classList.remove('btn-success');
+        trimCommitBtn.classList.add('btn-outline-success');
+      }
+      trimSaveBtn.classList.remove('btn-primary');
+      trimSaveBtn.classList.add('btn-outline-primary');
+      trimDeleteBtn.classList.remove('btn-light');
+      trimDeleteBtn.classList.add('btn-outline-light');
+      toggleElementVisibility(false, [trimResetBtn, trimSaveBtn, trimDeleteBtn, trimCommitBtn]);
+      toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
+      if (trimToggleSwitch.checked) {
+        toggleElementVisibility(true, [trimCommitBtn, trimSlider]);
+      } else {
+        toggleElementVisibility(false, [trimCommitBtn, trimSlider]);
+      }
+      // undo the trim, revert back to prior
+      // lazy - create the graph over
+      if (!('dataStash' in rowEntry)) {
+        console.error('No dataStash in rowEntry');
+        return;
+      }
+
+      const data = rowEntry['dataStash'].data;
+      const graphParams = {
+        'view': '3d',
+        'fps': data.fps,
+        'trace': data.trace,
+        'title': data.title,
+      };
+
+      gForcePlot.clearGraphs();
+      gForcePlot.prepareGraphs(graphParams);
+      gForcePlot.viewGraph('3d');
+
+      trimSelector.selectedIndex = 0;
+      if (!trimToggleSwitch.checked) {
+        gForcePlot.trimMode(false);
+
+      } else {
+        // graph cleared so re-enable
+        gForcePlot.trimMode(true);
+        const values = trimSlider.noUiSlider.get();
+        gForcePlot.drawStartEndPoints(values[0], values[1]);
+      }
+      delete rowEntry['trimBounds'];
+      rowEntry['leftColumn'].videoContainer.videoPlayer.pause();
+      rowEntry['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
+    });
+
+
+    trimDeleteBtn.addEventListener('click', () => {
+      const modalElement = document.getElementById('modal-container');
+      const bsModal = new bootstrap.Modal(modalElement);
+
+      const deleteTrimBtn = document.getElementById('delete-trim-btn');
+
+      function deleteTrimEvent() {
+        const selectedTrim = JSON.parse(trimSelector.value);
+        if (!selectedTrim) {
+          console.error(`No json in trimSelector.value`);
+          //error to user
+          return;
+        }
+        const jsonPath = rowEntry['dataFilePaths'].traceJsonPath;
+        const deleteTrimRequest = {
+          'type': 'update',
+          'subType': 'deleteTrim',
+          'index': rowIndex,
+          'jsonPath': jsonPath,
+          'deleteTrimId': selectedTrim['id'],
+        };
+        console.log(`Delete trim request ${deleteTrimRequest}`);
+        window.electron.traceFileIO(deleteTrimRequest);
+
+        // modal is shared amongst all rows, so remove after use.
+        deleteTrimBtn.removeEventListener('click', deleteTrimEvent);
+        bsModal.hide();
+      }
+      deleteTrimBtn.addEventListener('click', deleteTrimEvent);
+      bsModal.show();
+    });
+
+    trimSaveBtn.addEventListener('click', () => {
+      // display save card to apply label for trimmed region for load later
+      // take uiElements['trimBounds'], turn to string JSON.stringify(trimBounds)
+      //console.log(JSON.stringify(trimBounds));
+      //rowEntry['trimBounds'] = trimBounds;
       const dimViews = document.querySelectorAll('.fade-overlay');
       dimViews.forEach(view => {
         view.style.display = 'block';
         view.hidden = false;
       });
-      saveTraceCard.hidden = false;
-      document.getElementById('form-trace-title').textContent = '';
+      saveTrimCard.hidden = false;
+      document.getElementById('form-trim-title').textContent = '';
       // pass in the index to the save card element as an attribute so it knows where to get the required
       // information from
-      saveTraceCard.setAttribute('save-event-row-id', rowIndex);
+      saveTrimCard.setAttribute('save-event-row-id', rowIndex);
     });
-    loadBtn.addEventListener('click', () => {
-      window.electron.traceFileIO({
-        'type': 'readall',
-        'index': rowIndex,
-      });
+
+    trimCommitBtn.addEventListener('click', () => {
+      trimResetBtn.classList.remove('btn-outline-secondary');
+      trimResetBtn.classList.add('btn-secondary');
+      trimSaveBtn.classList.remove('btn-outline-primary');
+      trimSaveBtn.classList.add('btn-primary');
+      trimCommitBtn.classList.remove('btn-success');
+      trimCommitBtn.classList.add('btn-outline-success');
+      toggleElementVisibility(true, [trimResetBtn, trimSaveBtn]);
+      toggleElementVisibility(false, [trimCommitBtn, trimSlider, trimToggleSwitch, trimToggleLabel]);
+      let title = ('title' in rowEntry['dataStash'].data) ? rowEntry['dataStash'].data.title : null;
+      if (title) {
+        title += ' Trimmed';
+      }
+      const trimBounds = gForcePlot.commitTrim(title);
+      console.log(JSON.stringify(trimBounds));
+      rowEntry['trimBounds'] = trimBounds;
+      rowEntry['leftColumn'].videoContainer.videoPlayer.currentTime = trimBounds['startTime'];
     });
   }
 
-  // 3d/2d view
-  {
-    const view3dBtn = leftColumn['viewToggleButtons'].v3d;
-    const view2dBtn = leftColumn['viewToggleButtons'].v2d;
-    view3dBtn.addEventListener('click', () => {
-      rightColumn['plotly'].top.hidden = false;
-      rightColumn['plotly'].bottom.hidden = true;
-      rightColumn['viewButtons'].viewButtonGroup.hidden = false;
-      rightColumn['plotly'].top.setAttribute('has-data', '');
-      rightColumn['plotly'].bottom.removeAttribute('has-data');
-      gForcePlot.viewGraph('3d');
-      if (overlayCheckBtn.checked) {
-        addOverlayTraces(rowUIElementMap);
-      } else {
-        removeOverlayTraces(rowUIElementMap);
-      }
-    });
-    view2dBtn.addEventListener('click', () => {
-      rightColumn['plotly'].top.hidden = false;
-      rightColumn['plotly'].bottom.hidden = false;
-      rightColumn['viewButtons'].viewButtonGroup.hidden = true;
-      rightColumn['plotly'].top.setAttribute('has-data', '');
-      rightColumn['plotly'].bottom.setAttribute('has-data', '');
-      gForcePlot.viewGraph('2d');
-      if (overlayCheckBtn.checked) {
-        addOverlayTraces(rowUIElementMap);
-      } else {
-        removeOverlayTraces(rowUIElementMap);
-      }
-    });
-  }
-
-  // dropzone
-  {
-    const dropZone = leftColumn['dropZoneContainer'].dropZone;
-    dropZone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropZone.style.backgroundColor = 'lightgray';
-    });
-    dropZone.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropZone.style.backgroundColor = '';
-    });
-    dropZone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropZone.style.backgroundColor = '';
-      const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        const videoFile = files[0];
-        if (videoFile.type === 'video/mp4') {
-          // FIXME: check video dimensions are expected before starting. do in script, error with reason
-          leftColumn['dropZoneContainer'].container.hidden = true;
-          leftColumn['videoContainer'].container.hidden = false;
-          leftColumn['videoContainer'].videoPlayer.src = URL.createObjectURL(videoFile);
-          rightColumn['loadingSpinner'].hidden = false;
-
-          processVideo(videoFile.path, rowIndex);
-        } else {
-          showToast('A .mp4 video file is required.', false);
-        }
-      }
-    });
-    const selectButton = leftColumn['dropZoneContainer'].selectVideoButton;
-    selectButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      window.electron.openVideoDialogPrompt(rowIndex);
-    });
-  }
-  // video
-  /*
+  function videoEvents() {
+    /*
     There is what looks to be a bug in Apple ARM devices where seeking results in video decoder errors
-    https://github.com/video-dev/hls.js/issues/3834
-    https://bugs.chromium.org/p/chromium/issues/detail?id=1203822 
-
-    As a result, there is some pretty ugly steps that I take to reduce the occurence of the errors.
-    Attempting to tell multiple videos to seek at the same time seems to cause errors at higher rates, though
-    even on a single video do I see video decoder errors pop up. 
+        https://github.com/video-dev/hls.js/issues/3834
+        https://bugs.chromium.org/p/chromium/issues/detail?id=1203822 
     
-    The jist is to serialize the video elements so only 1 video at a time is in the process of pausing or seeking.
-    When multiple videos are present, at the occurence of the first video event to trigger an action, I build up a queue of video
-    elements that need to change state.
-
-    I had to make excessive use of attributes to deduce what particular state the video
-    playback is in. I'm sure there's a cleaner way, but it's not important right now.
-  */
-  {
+        As a result, there is some pretty ugly steps that I take to reduce the occurence of the errors.
+        Attempting to tell multiple videos to seek at the same time seems to cause errors at higher rates, though
+        even on a single video do I see video decoder errors pop up. 
+        
+        The jist is to serialize the video elements so only 1 video at a time is in the process of pausing or seeking.
+        When multiple videos are present, at the occurence of the first video event to trigger an action, I build up a queue of video
+        elements that need to change state.
+    
+        I had to make excessive use of attributes to deduce what particular state the video
+        playback is in. I'm sure there's a cleaner way, but it's not important right now.
+    */
     const videoPlayer = leftColumn['videoContainer'].videoPlayer;
     const videoControls = leftColumn['videoControls'];
     const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
@@ -725,6 +811,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       if (trimSelector.selectedIndex > 0) {
         const selectedEntry = JSON.parse(trimSelector.options[trimSelector.selectedIndex].value);
         const { startTime } = selectedEntry.range;
+        console.debug(`Trim selected, setting time to ${startTime}`);
         videoPlayer.currentTime = startTime;
       } else {
         videoPlayer.currentTime = 0;
@@ -761,6 +848,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
 
           videoPlayer.pause();
         }
+
         // play video(s)
         else {
           if (shouldSyncVideos) {
@@ -797,7 +885,7 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
             }
           } else {
             changeSvgIcon(videoControls.playPause, '#pause');
-            videoPlayer.play()
+            videoPlayer.play();
           }
         }
       }, 100);
@@ -813,7 +901,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
         if (isVideoPlaying(videoPlayer)) {
           videoPlayer.pause();
           resetVideoPlayerTime();
-
         } else {
           // playing -> pause btn -> stop btn
           // `pause` event is not triggered if already paused, so set time here
@@ -886,8 +973,9 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
           console.error(`${videoPlayer.id} attempted to set bad time ${syncTime}`);
         }
         videoPlayer.removeAttribute('plotly-playback-time');
-        if (syncTime)
+        if (syncTime) {
           videoPlayer.currentTime = syncTime;
+        }
       }
 
       // stopping needs seek, on `canplay` after seek, check for syncing flag
@@ -988,7 +1076,6 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       }
     });
 
-
     videoPlayer.addEventListener('ended', () => {
       console.debug(`${videoPlayer.id} - ended`);
       changeSvgIcon(videoControls.playPause, '#play');
@@ -1000,11 +1087,13 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       videoPlayer.setAttribute('video-ended', '');
     });
 
-    // When updating the currentTime of videos while syncing, 
-    // somewhat frequenctly, an error of "PIPELINE_ERROR_DECODE: VDA Error 4" 
-    // is generated on Apple ARM.
-    // As a work around, store the current playback, reload the video and reset the current time.
-    // This causes the video player to flash, but I can live it that. 
+    /*
+    When updating the currentTime of videos while syncing, 
+    somewhat frequenctly, an error of "PIPELINE_ERROR_DECODE: VDA Error 4" 
+    is generated on Apple ARM.
+    As a work around, store the current playback, reload the video and reset the current time.
+    This causes the video player to flash, but I can live it that.  
+    */
     videoPlayer.addEventListener('error', () => {
       console.error(`!! Video ${videoPlayer.id} error ${videoPlayer.error.message} !!\n`);
       videoPlayer.setAttribute('video-error-reset', '');
@@ -1046,202 +1135,149 @@ function applyEventListeners(rowIndex, leftColumn, rightColumn, gForcePlot) {
       }, 250);
     });
   }
-  // Video trim 
-  {
-    const trimToggleSwitch = leftColumn['trimVideo'].toggle.input;
-    const trimToggleLabel = leftColumn['trimVideo'].toggle.label;
-    const trimBackBtn = leftColumn['trimVideo'].trimControl.trimBackBtn;
-    const trimSaveBtn = leftColumn['trimVideo'].trimControl.trimSaveBtn;
-    const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
-    const trimSelector = leftColumn['trimVideo'].trimControl.trimSelector;
-    const trimCommitBtn = leftColumn['trimVideo'].trimControl.trimCommitBtn;
-    const trimSlider = leftColumn['trimVideo'].trimControl.trimSlider;
 
-    trimSlider.noUiSlider.on('update', function (values, _handle) {
-      gForcePlot.drawStartEndPoints(values[0], values[1]);
-    });
-
-    trimToggleSwitch.addEventListener('click', () => {
-      if (trimToggleSwitch.checked) {
-        // disable the overlay when trimming
+  function graphViewBtnEvents() {
+    const view3dBtn = leftColumn['viewToggleButtons'].v3d;
+    const view2dBtn = leftColumn['viewToggleButtons'].v2d;
+    view3dBtn.addEventListener('click', () => {
+      rightColumn['plotly'].top.hidden = false;
+      rightColumn['plotly'].bottom.hidden = true;
+      rightColumn['viewButtons'].viewButtonGroup.hidden = false;
+      rightColumn['plotly'].top.setAttribute('has-data', '');
+      rightColumn['plotly'].bottom.removeAttribute('has-data');
+      gForcePlot.viewGraph('3d');
+      if (overlayCheckBtn.checked) {
+        addOverlayTraces(rowUIElementMap);
+      } else {
         removeOverlayTraces(rowUIElementMap);
-        overlayCheckBtn.checked = false;
-        toggleElementVisibility(false, [overlayCheckBtn, trimSelector]);
-
-        gForcePlot.trimMode(true);
-
-        const values = trimSlider.noUiSlider.get();
-        gForcePlot.drawStartEndPoints(values[0], values[1]);
-        toggleElementVisibility(true, [trimSlider, trimCommitBtn]);
-      } else {
-        // reset graph
-        toggleElementVisibility(false, [trimSlider, trimCommitBtn]);
-        toggleElementVisibility(true, [overlayCheckBtn, trimSelector]);
-        gForcePlot.trimMode(false);
-        gForcePlot.removeTrimPoints();
       }
     });
 
-    trimSelector.addEventListener('change', (event) => {
-      if (trimSelector.selectedIndex === 0) {
-        // first index is always the default 
-        toggleElementVisibility(false, [trimDeleteBtn]);
-        return;
+    view2dBtn.addEventListener('click', () => {
+      rightColumn['plotly'].top.hidden = false;
+      rightColumn['plotly'].bottom.hidden = false;
+      rightColumn['viewButtons'].viewButtonGroup.hidden = true;
+      rightColumn['plotly'].top.setAttribute('has-data', '');
+      rightColumn['plotly'].bottom.setAttribute('has-data', '');
+      gForcePlot.viewGraph('2d');
+      if (overlayCheckBtn.checked) {
+        addOverlayTraces(rowUIElementMap);
+      } else {
+        removeOverlayTraces(rowUIElementMap);
       }
-      trimBackBtn.classList.remove('btn-outline-secondary');
-      trimBackBtn.classList.add('btn-secondary');
-      toggleElementVisibility(true, [trimBackBtn, trimDeleteBtn]);
-      // for simplicity, disable the trim mode after selecting.
-      // To implement, there would need to be tracking of a second level of offsetting
-      // first trim offsets from the start, a second trim would be start + first trim + second trim
-      // which can get out of hand if the end user keeps attempting to trim
-      toggleElementVisibility(false, [trimToggleLabel, trimToggleSwitch]);
-      const selectedRange = JSON.parse(event.target.value);
-      const selectedText = event.target.options[event.target.selectedIndex].textContent;
-      // remove previous trim, if applied, and apply new trim
-      const data = rowEntry['dataStash'].data;
-      const graphParams = {
-        'view': '3d',
-        'fps': data.fps,
-        'trace': data.trace,
-        'title': data.title,
-      };
+    });
+  }
 
-      gForcePlot.clearGraphs();
-      gForcePlot.prepareGraphs(graphParams);
-      gForcePlot.viewGraph('3d');
-
-      //gForcePlot.removeTrimPoints();
-      gForcePlot.commitTrim(selectedText, selectedRange['range']);
-      const videoPlayer = leftColumn['videoContainer'].videoPlayer;
-      videoPlayer.currentTime = selectedRange['range'].startTime;
+  function dropzoneEvents() {
+    const dropZone = leftColumn['dropZoneContainer'].dropZone;
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.backgroundColor = 'lightgray';
     });
 
-    trimBackBtn.addEventListener('click', () => {
-      trimBackBtn.classList.remove('btn-secondary');
-      trimBackBtn.classList.add('btn-outline-secondary');
-      trimSaveBtn.classList.remove('btn-primary');
-      trimSaveBtn.classList.add('btn-outline-primary');
-      trimCommitBtn.classList.remove('btn-outline-secondary');
-      trimCommitBtn.classList.add('btn-secondary');
-      toggleElementVisibility(false, [trimBackBtn, trimSaveBtn]);
-      toggleElementVisibility(true, [trimToggleLabel, trimToggleSwitch]);
-      if (trimToggleSwitch.checked) {
-        toggleElementVisibility(true, [trimCommitBtn, trimSlider]);
-      } else {
-        toggleElementVisibility(false, [trimCommitBtn, trimSlider]);
-      }
-      // undo the trim, revert back to prior
-      // lazy - create the graph over
-      if (!('dataStash' in rowEntry)) {
-        console.error('No dataStash in rowEntry');
-        return;
-      }
-
-      const data = rowEntry['dataStash'].data;
-      const graphParams = {
-        'view': '3d',
-        'fps': data.fps,
-        'trace': data.trace,
-        'title': data.title,
-      };
-
-      gForcePlot.clearGraphs();
-      gForcePlot.prepareGraphs(graphParams);
-      gForcePlot.viewGraph('3d');
-
-      if (!trimToggleSwitch.checked) {
-        gForcePlot.trimMode(false);
-        trimSelector.selectedIndex = 0;
-      } else {
-        // graph cleared so re-enable
-        gForcePlot.trimMode(true);
-        const values = trimSlider.noUiSlider.get();
-        gForcePlot.drawStartEndPoints(values[0], values[1]);
-      }
-      delete rowEntry['trimBounds'];
-      rowEntry['leftColumn'].videoContainer.videoPlayer.pause();
-      rowEntry['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
+    dropZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.backgroundColor = '';
     });
 
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.backgroundColor = '';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        const videoFile = files[0];
+        if (videoFile.type === 'video/mp4') {
+          // FIXME: check video dimensions are expected before starting. do in script, error with reason
+          leftColumn['dropZoneContainer'].container.hidden = true;
+          leftColumn['videoContainer'].container.hidden = false;
+          leftColumn['videoContainer'].videoPlayer.src = URL.createObjectURL(videoFile);
+          rightColumn['loadingSpinner'].hidden = false;
 
-    trimDeleteBtn.addEventListener('click', () => {
-      const modalElement = document.getElementById('modal-container');
-      const bsModal = new bootstrap.Modal(modalElement);
-
-      const deleteTrimBtn = document.getElementById('delete-trim-btn');
-
-      function deleteTrimEvent() {
-        const selectedTrim = JSON.parse(trimSelector.value);
-        if (!selectedTrim) {
-          console.error(`No json in trimSelector.value`);
-          //error to user
-          return;
+          processVideo(videoFile.path, rowIndex);
+        } else {
+          showToast('A .mp4 video file is required.', false);
         }
-        const jsonPath = rowEntry['dataFilePaths'].traceJsonPath;
-        const deleteTrimRequest = {
-          'type': 'update',
-          'index': rowIndex,
-          'jsonPath': jsonPath,
-          'deleteTrimId': selectedTrim['id'],
-        };
-        console.log(`Delete trim request ${deleteTrimRequest}`);
-        window.electron.traceFileIO(deleteTrimRequest);
-
-        // modal is shared amongst all rows, so remove after use.
-        deleteTrimBtn.removeEventListener('click', deleteTrimEvent);
-        bsModal.hide();
       }
-      deleteTrimBtn.addEventListener('click', deleteTrimEvent);
-      bsModal.show();
     });
 
-    trimSaveBtn.addEventListener('click', () => {
-      // display save card to apply label for trimmed region for load later
-      // take uiElements['trimBounds'], turn to string JSON.stringify(trimBounds)
-      //console.log(JSON.stringify(trimBounds));
-      //rowEntry['trimBounds'] = trimBounds;
+    const selectButton = leftColumn['dropZoneContainer'].selectVideoButton;
+    selectButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.electron.openVideoDialogPrompt(rowIndex);
+    });
+
+  }
+
+  function crudBtnEvents() {
+    const newBtn = leftColumn['crudButtons'].newBtn;
+    const saveBtn = leftColumn['crudButtons'].saveBtn;
+    const loadBtn = leftColumn['crudButtons'].loadBtn;
+    newBtn.addEventListener('click', () => {
+      // Clear out UI
+      leftColumn['videoContainer'].videoPlayer.pause();
+      gForcePlot.clearGraphs();
+
+      const playPauseBtn = leftColumn['videoControls'].playPause;
+      changeSvgIcon(playPauseBtn, '#play');
+
+      const audioBtn = leftColumn['videoControls'].audio;
+      changeSvgIcon(audioBtn, '#audio-off');
+
+      leftColumn['videoContainer'].videoPlayer.src = '';
+      // setting src to '' leads to a consistent stream of 
+      // !! Video video-1 error MEDIA_ELEMENT_ERROR: Empty src attribute !!
+      // errors in the console. Remove the attribute stops errors.
+      leftColumn['videoContainer'].videoPlayer.removeAttribute('src');
+      leftColumn['videoContainer'].videoPlayer.muted = false;
+      leftColumn['videoContainer'].container.hidden = true;
+
+      leftColumn['dropZoneContainer'].container.hidden = false;
+
+      leftColumn['viewToggleButtons'].v3d.checked = true;
+      leftColumn['viewToggleButtons'].v2d.checked = false;
+      leftColumn['trimVideo'].toggle.input.checked = false;
+
+      resetTrimElements(rowEntry);
+
+      const viewBtns = leftColumn['viewToggleButtons'].buttonGroup;
+      const videoControls = leftColumn['videoControls'].container;
+
+      toggleElementVisibility(false, [saveBtn, viewBtns, videoControls]);
+
+      rightColumn['plotly'].top.hidden = true;
+      rightColumn['plotly'].bottom.hidden = true;
+
+      rowEntry['rawDataStash'] = null;
+      rowEntry['dataFilePaths'].traceJsonPath = '';
+      rowEntry['dataFilePaths'].videoPath = '';
+
+      removeOverlayTraces(rowUIElementMap);
+      addOverlayTraces(rowUIElementMap);
+    });
+
+    saveBtn.addEventListener('click', () => {
+      // dim, present card
       const dimViews = document.querySelectorAll('.fade-overlay');
       dimViews.forEach(view => {
         view.style.display = 'block';
         view.hidden = false;
       });
-      saveTrimCard.hidden = false;
-      document.getElementById('form-trim-title').textContent = '';
+      saveTraceCard.hidden = false;
+      document.getElementById('form-trace-title').textContent = '';
       // pass in the index to the save card element as an attribute so it knows where to get the required
       // information from
-      saveTrimCard.setAttribute('save-event-row-id', rowIndex);
+      saveTraceCard.setAttribute('save-event-row-id', rowIndex);
     });
 
-    trimCommitBtn.addEventListener('click', () => {
-      trimBackBtn.classList.remove('btn-outline-secondary');
-      trimBackBtn.classList.add('btn-secondary');
-      trimSaveBtn.classList.remove('btn-outline-primary');
-      trimSaveBtn.classList.add('btn-primary');
-      trimCommitBtn.classList.remove('btn-secondary');
-      trimCommitBtn.classList.add('btn-outline-secondary');
-      toggleElementVisibility(true, [trimBackBtn, trimSaveBtn]);
-      toggleElementVisibility(false, [trimCommitBtn, trimSlider, trimToggleSwitch, trimToggleLabel]);
-      let title = ('title' in rowEntry['dataStash'].data) ? rowEntry['dataStash'].data.title : null;
-      if (title) {
-        title += ' Trimmed';
-      }
-      const trimBounds = gForcePlot.commitTrim(title);
-      console.log(JSON.stringify(trimBounds));
-      rowEntry['trimBounds'] = trimBounds;
-      rowEntry['leftColumn'].videoContainer.videoPlayer.currentTime = trimBounds['startTime'];
-    });
-  }
-  // plot views
-  {
-    const dropDownButton = rightColumn['viewButtons'].dropDownButton;
-    const dropDownMenu = rightColumn['viewButtons'].dropDownMenu;
-    dropDownMenu.addEventListener('click', (event) => {
-      if (event.target.classList.contains('dropdown-item')) {
-        const clickedItemText = event.target.textContent;
-        dropDownButton.textContent = clickedItemText;
-        gForcePlot.setCameraPosition(clickedItemText);
-      }
+    loadBtn.addEventListener('click', () => {
+      window.electron.traceFileIO({
+        'type': 'readall',
+        'index': rowIndex,
+      });
     });
   }
 }
@@ -1430,9 +1466,10 @@ function displayTraces(result) {
 
         const request = {
           'type': 'update',
+          'subType': 'renameTrace',
           'index': index,
           'title': titleDiv.textContent,
-          'traceId': trace.traceId,
+          'jsonPath': trace.tracePath,
         };
         window.electron.traceFileIO(request);
       }

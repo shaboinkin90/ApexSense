@@ -779,70 +779,50 @@ async function getTraceContents(tracePath) {
 
 /* update */
 async function updateTrace(request) {
-  // updating just means adjusting the path of the video file
-  // this could be expand to changing the title
+  log.debug(`Update trace request: ${JSON.stringify(request)}`);
+
   const UpdateResponse = Object.freeze({
     ERROR: 'error',
     OK: 'ok',
   });
 
-  const Actions = Object.freeze({
-    Title: 'title',
-    VideoPath: 'videoPath',
-    SaveTrim: 'save-trim',
-    DeleteTrim: 'delete-trim',
-  });
-
-  // to indicate to renderer what exactly was updated 
-  let actionTaken = '';
-
-  log.debug(`Update trace request: ${JSON.stringify(request)}`);
-  let traceFile = null;
-  if (request.hasOwnProperty('traceId')) {
-    traceFile = path.join(ROOT_PATH, 'traces', request['traceId'], 'trace.json');
-  } else {
-    traceFile = request['jsonPath'];
-  }
-
+  const traceFile = request['jsonPath'];
   const json = await readJsonFile(traceFile);
   if (json === null) {
     return {
       'status': UpdateResponse.ERROR,
+      'subType': request['subType'],
       'index': request['index'],
       'error': 'Failed to read json file.',
     }
   }
 
-  if (request.hasOwnProperty('trimRange')) {
-    if (json.hasOwnProperty('trim')) {
+  switch (request['subType']) {
+    case 'saveTrim':
+      json['trim'] = json['trim'] || [];
       json['trim'].push({
         'id': uuidv4(),
         'label': request['label'],
         'range': request['trimRange']
       });
-    } else {
-      json['trim'] = [{
-        'id': uuidv4(),
-        'label': request['label'],
-        'range': request['trimRange']
-      }];
-    }
-    actionTaken = Actions.SaveTrim;
-  }
-
-  if (request.hasOwnProperty('deleteTrimId')) {
-    if (json.hasOwnProperty('trim')) {
+      break;
+    case 'deleteTrim':
       json['trim'] = json['trim'].filter(trim => trim.id !== request['deleteTrimId']);
-    }
-    actionTaken = Actions.DeleteTrim;
-  }
-
-  if (request.hasOwnProperty('title')) {
-    json['title'] = request['title'];
-    actionTaken = Actions.Title;
-  } else if (request.hasOwnProperty('updatedVideoPath')) {
-    json['videoPath'] = request['updatedVideoPath'];
-    actionTaken = Actions.VideoPath;
+      break;
+    case 'renameTrace':
+      json['title'] = request['title'];
+      break;
+    case 'videoPath':
+      json['videoPath'] = request['updatedVideoPath'];
+      break;
+    default:
+      log.error(`Unknown subType ${request['subType']}`);
+      return {
+        'status': UpdateResponse.ERROR,
+        'index': request['index'],
+        'subType': request['subType'],
+        'error': 'Unknown subType',
+      }
   }
 
   try {
@@ -851,6 +831,7 @@ async function updateTrace(request) {
     log.error(`Failed to update ${traceFile}. Error: ${error.message}`);
     return {
       'status': UpdateResponse.ERROR,
+      'subType': request['subType'],
       'index': request['index'],
       'error': error,
     }
@@ -859,7 +840,7 @@ async function updateTrace(request) {
   return {
     'status': UpdateResponse.OK,
     'index': request['index'],
-    'action': actionTaken,
+    'subType': request['subType'],
     ...json,
   };
 }
@@ -940,7 +921,6 @@ function formTraceResultResponse(type, status, index, tracePath, videoPath, titl
 
   return response;
 }
-
 
 // IMPLEMENT THIS on next major version
 /*

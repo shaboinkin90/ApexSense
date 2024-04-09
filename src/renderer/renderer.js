@@ -170,6 +170,7 @@ function saveTrimAction() {
   const trimRange = uiElements['trimBounds'];
   const saveTrimRequest = {
     'type': 'update',
+    'subType': 'saveTrim',
     'index': rowIndex,
     'label': label.value,
     'jsonPath': jsonPath,
@@ -203,7 +204,7 @@ function saveTrimCompletion(result) {
 
   uiElements['dataStash'].trim = result['trim'];
   const trimRegionList = result['trim'];
-  buildSelectorTrimList(trimSelector, trimRegionList);
+  buildSelectorTrimList(trimSelector, trimRegionList, true);
   toggleElementVisibility(true, [trimDeleteBtn]);
   if (result['status'] === 'ok') {
     showToast('Trim saved', true);
@@ -214,15 +215,46 @@ function saveTrimCompletion(result) {
 }
 
 function deleteTrimCompletion(result) {
+  console.log(`deleteTrimCompletion: ${JSON.stringify(result)}`)
   // on completion, remove from list, reset graph, reset video, reset selector, reset slider if enabled
   const uiElements = rowUIElementMap.get(parseInt(result['index'], 10));
+  const gForcePlot = uiElements['gForcePlot'];
+  const trimToggleSwitch = uiElements['leftColumn'].trimVideo.toggle.input;
   const trimSelector = uiElements['leftColumn'].trimVideo.trimControl.trimSelector;
   const trimDeleteBtn = uiElements['leftColumn'].trimVideo.trimControl.trimDeleteBtn;
+  const trimSlider = uiElements['leftColumn'].trimVideo.trimControl.trimSlider;
   toggleElementVisibility(false, [trimDeleteBtn]);
 
   uiElements['dataStash'].trim = result['trim'];
   const trimRegionList = result['trim'];
-  buildSelectorTrimList(trimSelector, trimRegionList);
+  const selectLastTrim = false;
+  buildSelectorTrimList(trimSelector, trimRegionList, selectLastTrim);
+
+  const data = uiElements['dataStash'].data;
+  const graphParams = {
+    'view': '3d',
+    'fps': data.fps,
+    'trace': data.trace,
+    'title': data.title,
+  };
+
+  gForcePlot.clearGraphs();
+  gForcePlot.prepareGraphs(graphParams);
+  gForcePlot.viewGraph('3d');
+
+  trimSelector.selectedIndex = 0;
+  if (!trimToggleSwitch.checked) {
+    gForcePlot.trimMode(false);
+
+  } else {
+    // graph cleared so re-enable
+    gForcePlot.trimMode(true);
+    const values = trimSlider.noUiSlider.get();
+    gForcePlot.drawStartEndPoints(values[0], values[1]);
+  }
+  delete uiElements['trimBounds'];
+  uiElements['leftColumn'].videoContainer.videoPlayer.pause();
+  uiElements['leftColumn'].videoContainer.videoPlayer.currentTime = 0;
   if (result['status'] === 'ok') {
     showToast('Trim deleted', true);
   } else {
@@ -478,7 +510,7 @@ function setupRowForGraph(result) {
   const trimRegionList = uiElements['dataStash'].trim;
   const trimDeleteBtn = leftColumn['trimVideo'].trimControl.trimDeleteBtn;
 
-  buildSelectorTrimList(trimSelector, trimRegionList);
+  buildSelectorTrimList(trimSelector, trimRegionList, false);
   if (trimRegionList.length > 0) {
     // start at begnning
     trimSelector.selectedIndex = 0;
@@ -560,6 +592,7 @@ window.electron.receive('file-dialog-complete', (result) => {
   } else if (type === 'updated-video-path') {
     const request = {
       'type': 'update',
+      'subType': 'videoPath',
       'traceId': result['traceId'],
       'index': index,
       'updatedVideoPath': videoPath,
@@ -616,9 +649,11 @@ window.electron.receive('trace-io-complete', (result) => {
       }
       break;
     case 'update':
-      if (result['action'] === 'save-trim') {
+      if (result['subType'] === 'saveTrim') {
         saveTrimCompletion(result);
-      } else if (result['action'] === 'title' || result['action'] === 'video') {
+      } else if (result['subType'] === 'deleteTrim') {
+        deleteTrimCompletion(result);
+      } else if (result['subType'] === 'renameTrace' || result['subType'] === 'videoPath') {
         updateTraceCompletion(result);
       }
       break;
